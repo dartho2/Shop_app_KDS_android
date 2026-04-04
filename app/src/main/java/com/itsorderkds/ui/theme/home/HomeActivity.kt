@@ -82,24 +82,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.itsorderkds.LoginActivity
 import com.itsorderkds.R
-import com.itsorderkds.data.enums.RestaurantStatus
 import com.itsorderkds.data.model.ShiftCheckOut
 import com.itsorderkds.data.responses.UserRole
 import com.itsorderkds.data.socket.SocketAction
 import com.itsorderkds.service.SocketService
 import com.itsorderkds.ui.loading.AppLoadingScreen
-import com.itsorderkds.ui.open.OpenHoursScreen
 import com.itsorderkds.ui.order.OrderEvent
 import com.itsorderkds.ui.order.OrderRouteState
 import com.itsorderkds.ui.order.OrderStatusEnum
 import com.itsorderkds.ui.order.OrdersViewModel
-import com.itsorderkds.ui.product.IntegratedSearchBar
-import com.itsorderkds.ui.product.ProductsScreen
-import com.itsorderkds.ui.product.CategoriesListScreen
-import com.itsorderkds.ui.product.CategoryProductsScreen
-import com.itsorderkds.ui.product.ProductsViewModel
-import com.itsorderkds.ui.product.detail.ProductDetailScreen
-import com.itsorderkds.ui.product.detail.ProductDetailViewModel
 import com.itsorderkds.ui.settings.MainSettingsScreen
 import com.itsorderkds.ui.settings.NotificationSettingsScreen
 import com.itsorderkds.ui.settings.PermissionsScreen
@@ -110,10 +101,7 @@ import com.itsorderkds.ui.startNewActivity
 import com.itsorderkds.ui.theme.GlobalMessageManager
 import com.itsorderkds.ui.theme.ItsOrderChatTheme
 import com.itsorderkds.ui.theme.home.components.DrawerContent
-import com.itsorderkds.ui.theme.home.components.RestaurantStatusChip
 import com.itsorderkds.ui.theme.home.components.ShiftStatusAction
-import com.itsorderkds.ui.theme.status.PauseDialog
-import com.itsorderkds.ui.theme.status.RestaurantStatusSheet
 import com.itsorderkds.ui.util.planRouteOnMap
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -124,29 +112,20 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 object AppDestinations {
+    // Główny ekran KDS
     const val HOME = "home"
-    const val PRODUCTS_LIST = "products_list"
-    const val CATEGORIES_LIST = "categories_list"
-    const val CATEGORY_PRODUCTS = "category_products"
 
-    //    const val PRODUCTS_LIST_ROUTE = "products_list"
-    const val PRODUCTS_FILTER_ARG = "filter"
-    const val PRODUCT_DETAIL_PREFIX = "product_detail"
-
-    // Nowa trasa z opcjonalnym argumentem
-    const val PRODUCTS_LIST_TEMPLATE =
-        "$PRODUCTS_LIST?${PRODUCTS_FILTER_ARG}={$PRODUCTS_FILTER_ARG}"
-    const val CATEGORY_PRODUCTS_TEMPLATE = "$CATEGORY_PRODUCTS/{categoryId}/{categoryName}"
-    const val PRODUCT_DETAIL_TEMPLATE = "$PRODUCT_DETAIL_PREFIX/{productId}"
+    // Ustawienia
     const val SETTINGS_MAIN = "settings_main"
     const val SETTINGS_MAIN_CONFIG = "settings_main_config"
     const val SETTINGS_PRINT = "settings_print"
     const val SETTINGS_LOGS = "settings_logs"
-    const val SETTINGS_OPEN_HOURS = "settings_open_hours"
     const val SETTINGS_NOTIFICATIONS = "settings_notifications"
     const val SETTINGS_PERMISSIONS = "settings_permissions"
-    const val PRINTERS_LIST = "printers_list"  // Nowy ekran zarządzania drukarkami
-    const val SERIAL_DIAGNOSTIC = "serial_diagnostic"  // Diagnostyka portów szeregowych
+
+    // Drukarki
+    const val PRINTERS_LIST = "printers_list"
+    const val SERIAL_DIAGNOSTIC = "serial_diagnostic"
 }
 
 @AndroidEntryPoint
@@ -283,7 +262,6 @@ class HomeActivity : ComponentActivity() {
                     messageManager = messageManager,
                     socketEventsRepo = socketEventsRepo,
                     onLogout = { logout() },
-                    onCheckOut = { doCheckOut() },
                     onNavControllerReady = { navController = it }  // 🎯 Przypisz do Activity
                 )
             }
@@ -338,8 +316,7 @@ class HomeActivity : ComponentActivity() {
     }
 
 
-    private fun doCheckOut() =
-        ordersViewModel.checkOut(ShiftCheckOut(date = LocalDate.now().toString()))
+
 
     private fun logout() = lifecycleScope.launch {
         userPreferences.clear()
@@ -391,7 +368,6 @@ fun MainAppContainer(
     messageManager: GlobalMessageManager,
     socketEventsRepo: com.itsorderkds.service.SocketEventsRepository,
     onLogout: () -> Unit,
-    onCheckOut: () -> Unit,
     onNavControllerReady: (NavHostController) -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -454,7 +430,6 @@ fun MainAppContainer(
     }
 
     LaunchedEffect(Unit) {
-        ordersViewModel.safelyRefreshStatus()
 //        ordersViewModel.fetchGeneralSettings()
         ordersViewModel.event.collectLatest { event ->
             when (event) {
@@ -533,7 +508,6 @@ fun MainAppContainer(
                 scope = scope,
                 ordersViewModel = ordersViewModel,
                 onLogout = onLogout,
-                onCheckOut = onCheckOut,
                 socketEventsRepo = socketEventsRepo
             )
         }
@@ -549,7 +523,6 @@ private fun MainScaffoldContent(
     scope: CoroutineScope,
     ordersViewModel: OrdersViewModel,
     onLogout: () -> Unit,
-    onCheckOut: () -> Unit,
     socketEventsRepo: com.itsorderkds.service.SocketEventsRepository
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -596,12 +569,6 @@ private fun MainScaffoldContent(
                     }
                     scope.launch { drawerState.close() }
                 },
-                onNavigateToProducts = {
-                    if (!isCourier) {
-                        navController.navigate(AppDestinations.CATEGORIES_LIST)
-                        scope.launch { drawerState.close() }
-                    }
-                },
                 onNavigateToSettings = {
                     if (!isCourier) {
                         navController.navigate(AppDestinations.SETTINGS_MAIN)
@@ -609,9 +576,7 @@ private fun MainScaffoldContent(
                     }
                 },
                 onCloseDrawer = { scope.launch { drawerState.close() } },
-                showHome = true,
-                showProducts = !isCourier,
-                showSettings = !isCourier
+                showHome = true
             )
         }
     ) {
@@ -625,7 +590,6 @@ private fun MainScaffoldContent(
                             navController = navController,
                             onMenuClick = { scope.launch { drawerState.open() } },
                             ordersViewModel = ordersViewModel,
-                            onCheckOut = onCheckOut,
                             socketEventsRepo = socketEventsRepo
                         )
                     )
@@ -764,10 +728,6 @@ private fun CourierFloatingActionButtons(
                             )
                             == PackageManager.PERMISSION_GRANTED
                         ) {
-                            ordersViewModel.updateOrdersStatusWithLocation(
-                                selectedOrderIds,
-                                newStatus
-                            )
                         } else {
                             onLaunchPermissionRequest()
                         }
@@ -880,105 +840,37 @@ fun AppNavHost(
             )
         }
 
-        // 🔐 tylko dla nie-kuriera
-        if (!isCourier) {
-            // Lista kategorii - nowy główny ekran produktów
-            composable(AppDestinations.CATEGORIES_LIST) { backStackEntry ->
-                // Użyj shared ViewModel na poziomie navigation graph
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry(AppDestinations.CATEGORIES_LIST)
-                }
-                val sharedViewModel: ProductsViewModel = hiltViewModel(parentEntry)
-
-                CategoriesListScreen(
-                    viewModel = sharedViewModel,
-                    onCategoryClick = { categoryId, categoryName ->
-                        navController.navigate("${AppDestinations.CATEGORY_PRODUCTS}/$categoryId/$categoryName")
-                    }
-                )
-            }
-
-            // Produkty konkretnej kategorii
-            composable(
-                route = AppDestinations.CATEGORY_PRODUCTS_TEMPLATE,
-                arguments = listOf(
-                    navArgument("categoryId") { type = NavType.StringType },
-                    navArgument("categoryName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
-                val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
-
-                // WAŻNE: Użyj tego samego ViewModela co CategoriesListScreen
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry(AppDestinations.CATEGORIES_LIST)
-                }
-                val sharedViewModel: ProductsViewModel = hiltViewModel(parentEntry)
-
-                CategoryProductsScreen(
-                    categoryId = categoryId,
-                    categoryName = categoryName,
-                    viewModel = sharedViewModel,
-                    onProductClick = { productId ->
-                        navController.navigate("${AppDestinations.PRODUCT_DETAIL_PREFIX}/$productId")
-                    }
-                )
-            }
-
-            // Stary ekran produktów (zachowany dla kompatybilności z filtrem disabled)
-            composable(
-                route = AppDestinations.PRODUCTS_LIST_TEMPLATE,
-                arguments = listOf(navArgument(AppDestinations.PRODUCTS_FILTER_ARG) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val filter = backStackEntry.arguments?.getString(AppDestinations.PRODUCTS_FILTER_ARG)
-                ProductsScreen(
-                    filterArg = filter,
-                    onProductClick = { productId ->
-                        navController.navigate("${AppDestinations.PRODUCT_DETAIL_PREFIX}/$productId")
-                    }
-                )
-            }
-
-            composable(
-                route = AppDestinations.PRODUCT_DETAIL_TEMPLATE,
-                arguments = listOf(navArgument("productId") { type = NavType.StringType })
-            ) { ProductDetailScreen() }
-            composable(AppDestinations.SETTINGS_MAIN) {
-                SettingsMainScreen(
-                    onNavigateToOpenHours = { navController.navigate(AppDestinations.SETTINGS_OPEN_HOURS) },
-                    onNavigateToNotificationSettings = { navController.navigate(AppDestinations.SETTINGS_NOTIFICATIONS) },
-                    onNavigateToPrintersList = { navController.navigate(AppDestinations.PRINTERS_LIST) },
-                    onNavigateToPrintSettings = { navController.navigate(AppDestinations.SETTINGS_PRINT) },
-                    onNavigateToMainSettings = { navController.navigate(AppDestinations.SETTINGS_MAIN_CONFIG) },
-                    onNavigateToPermissions = { navController.navigate(AppDestinations.SETTINGS_PERMISSIONS) }
-                )
-            }
-            // 🎯 NOWE: Główne ustawienia
-            composable(AppDestinations.SETTINGS_MAIN_CONFIG) {
-                MainSettingsScreen(
-                    onNavigateBack = { navController.navigateUp() })
-            }
-            composable(AppDestinations.SETTINGS_PRINT) {
-                PrintSettingsScreen(onNavigateBack = { navController.navigateUp() })
-            }
-            composable(AppDestinations.SETTINGS_LOGS) { LogsScreen() }
-            composable(AppDestinations.SETTINGS_OPEN_HOURS) { OpenHoursScreen() }
-            composable(AppDestinations.SETTINGS_NOTIFICATIONS) {
-                NotificationSettingsScreen(onNavigateBack = { navController.navigateUp() })
-            }
-            composable(AppDestinations.SETTINGS_PERMISSIONS) {
-                PermissionsScreen(onNavigateBack = { navController.navigateUp() })
-            }
-            composable(AppDestinations.PRINTERS_LIST) {
-                com.itsorderkds.ui.settings.printer.PrintersListScreen(navController = navController)
-            }
-            composable(AppDestinations.SERIAL_DIAGNOSTIC) {
-                com.itsorderkds.ui.settings.printer.SerialPortDiagnosticScreen(navController = navController)
-            }
+        // Ustawienia
+        composable(AppDestinations.SETTINGS_MAIN) {
+            SettingsMainScreen(
+                onNavigateToNotificationSettings = { navController.navigate(AppDestinations.SETTINGS_NOTIFICATIONS) },
+                onNavigateToPrintersList = { navController.navigate(AppDestinations.PRINTERS_LIST) },
+                onNavigateToPrintSettings = { navController.navigate(AppDestinations.SETTINGS_PRINT) },
+                onNavigateToMainSettings = { navController.navigate(AppDestinations.SETTINGS_MAIN_CONFIG) },
+                onNavigateToPermissions = { navController.navigate(AppDestinations.SETTINGS_PERMISSIONS) }
+            )
+        }
+        // 🎯 NOWE: Główne ustawienia
+        composable(AppDestinations.SETTINGS_MAIN_CONFIG) {
+            MainSettingsScreen(
+                onNavigateBack = { navController.navigateUp() })
+        }
+        composable(AppDestinations.SETTINGS_PRINT) {
+            PrintSettingsScreen(onNavigateBack = { navController.navigateUp() })
+        }
+        composable(AppDestinations.SETTINGS_LOGS) { LogsScreen() }
+        // OpenHours - usunięte (nie potrzebne w KDS)
+        composable(AppDestinations.SETTINGS_NOTIFICATIONS) {
+            NotificationSettingsScreen(onNavigateBack = { navController.navigateUp() })
+        }
+        composable(AppDestinations.SETTINGS_PERMISSIONS) {
+            PermissionsScreen(onNavigateBack = { navController.navigateUp() })
+        }
+        composable(AppDestinations.PRINTERS_LIST) {
+            com.itsorderkds.ui.settings.printer.PrintersListScreen(navController = navController)
+        }
+        composable(AppDestinations.SERIAL_DIAGNOSTIC) {
+            com.itsorderkds.ui.settings.printer.SerialPortDiagnosticScreen(navController = navController)
         }
     }
 }
@@ -999,47 +891,15 @@ fun DynamicTopAppBar(
 
     TopAppBar(
         title = {
-            // ✅ ZMIANA: Używamy logiki if/else lub when z startsWith dla produktów
-            if (currentRoute.startsWith(AppDestinations.PRODUCTS_LIST)) {
-                // Jesteśmy na liście produktów (niezależnie od argumentów filtra)
-
-                // Pobieramy wpis ze stosu używając szablonu trasy, pod którym zdefiniowano ekran
-                val backStackEntry = remember(navController.currentBackStackEntry) {
-                    try {
-                        navController.getBackStackEntry(AppDestinations.PRODUCTS_LIST_TEMPLATE)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-
-                if (backStackEntry != null) {
-                    val vm: ProductsViewModel = hiltViewModel(backStackEntry)
-                    val uiState by vm.uiState.collectAsStateWithLifecycle()
-
-                    // Wyszukiwarka zamiast tekstu tytułu
-                    IntegratedSearchBar(
-                        query = uiState.searchQuery,
-                        onQueryChange = vm::onSearchQueryChange,
-                        // Opcjonalnie: dostosuj styl, aby pasował do TopAppBar
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(stringResource(R.string.products_title)) // Fallback
-                }
-            } else {
-                // Standardowe tytuły dla innych ekranów
-                when (currentRoute) {
-                    AppDestinations.HOME -> Unit
-                    AppDestinations.SETTINGS_MAIN -> Text(stringResource(R.string.settings_title))
-
-                    AppDestinations.SETTINGS_PRINT -> Text(stringResource(R.string.settings_print_title))
-                    AppDestinations.SETTINGS_LOGS -> Text(stringResource(R.string.settings_logs_title))
-                    AppDestinations.SETTINGS_OPEN_HOURS -> Text(stringResource(R.string.settings_open_hours_title))
-                    AppDestinations.SETTINGS_NOTIFICATIONS -> Text(stringResource(R.string.settings_notifications_title))
-                    AppDestinations.PRINTERS_LIST -> Text(stringResource(R.string.printers_manage_title))
-                    AppDestinations.PRODUCT_DETAIL_TEMPLATE -> Text(stringResource(R.string.product_details_title))
-                    else -> Unit // Obsługa nieznanych tras
-                }
+            // Tytuły dla ekranów KDS
+            when (currentRoute) {
+                AppDestinations.HOME -> Unit
+                AppDestinations.SETTINGS_MAIN -> Text(stringResource(R.string.settings_title))
+                AppDestinations.SETTINGS_PRINT -> Text(stringResource(R.string.settings_print_title))
+                AppDestinations.SETTINGS_LOGS -> Text(stringResource(R.string.settings_logs_title))
+                AppDestinations.SETTINGS_NOTIFICATIONS -> Text(stringResource(R.string.settings_notifications_title))
+                AppDestinations.PRINTERS_LIST -> Text(stringResource(R.string.printers_manage_title))
+                else -> Unit
             }
         },
         navigationIcon = {
@@ -1060,38 +920,13 @@ fun DynamicTopAppBar(
             }
         },
         actions = {
-            // ... (reszta kodu actions bez zmian) ...
+            // Akcje dla kuriera - zmiana zmiany
             if (isCourier && ordersUiState.isShiftActive) {
                 ShiftStatusAction(onCheckOut = onCheckOut)
             }
 
-            if (!isCourier && isHomeScreen) {
-                RestaurantStatusActionItem(
-                    ordersViewModel = ordersViewModel,
-                    navController = navController
-                )
-            }
-
-            // Zapisywanie produktu
-            if (currentRoute == AppDestinations.PRODUCT_DETAIL_TEMPLATE) {
-                // ... (bez zmian)
-                val backStackEntry = remember(navController.currentBackStackEntry) {
-                    navController.getBackStackEntry(AppDestinations.PRODUCT_DETAIL_TEMPLATE)
-                }
-                val vm: ProductDetailViewModel = hiltViewModel(backStackEntry)
-                val uiState by vm.uiState.collectAsStateWithLifecycle()
-                TextButton(onClick = vm::saveProduct, enabled = !uiState.isSaving) {
-                    Text(stringResource(R.string.common_save))
-                }
-            }
-
-            // Reszta akcji (Logi, Godziny otwarcia) bez zmian...
-            if (currentRoute == AppDestinations.SETTINGS_OPEN_HOURS) {
-                // ...
-            }
-            if (currentRoute == AppDestinations.SETTINGS_LOGS) {
-                // ...
-            }
+            // KDS nie wymaga zarządzania statusem restauracji
+            // Usunięto: RestaurantStatusActionItem
         }
     )
 }
@@ -1160,57 +995,5 @@ private fun StaffBottomBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RestaurantStatusActionItem(
-    ordersViewModel: OrdersViewModel,
-    navController: NavHostController
-) {
-    // Ta funkcja nie zawierała żadnych "sztywnych" tekstów,
-    // polegała na innych komponentach (RestaurantStatusChip, RestaurantStatusSheet, PauseDialog),
-    // które (zakładając) są już przetłumaczone.
-    val statusUi by ordersViewModel.restaurantStatus.collectAsStateWithLifecycle()
-    var showStatusSheet by remember { mutableStateOf(false) }
-    var showPauseDialog by remember { mutableStateOf(false) }
+// RestaurantStatusActionItem usunięty - KDS nie zarządza statusem restauracji
 
-    RestaurantStatusChip(
-        status = statusUi?.status ?: RestaurantStatus.CLOSED,
-        onClick = { showStatusSheet = true }
-    )
-
-    if (showStatusSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        RestaurantStatusSheet(
-            status = statusUi?.status,
-            message = statusUi?.message,
-            untilIso = statusUi?.untilIso,
-            sheetState = sheetState,
-            onDismiss = { showStatusSheet = false },
-            onOpen = { ordersViewModel.setClosed(false); showStatusSheet = false },
-            onClose = { ordersViewModel.setClosed(true); showStatusSheet = false },
-            onPauseClick = { showStatusSheet = false; showPauseDialog = true },
-            onClearPause = { ordersViewModel.clearPause(); showStatusSheet = false },
-            onEditOpenHours = {
-                navController.navigate(AppDestinations.SETTINGS_OPEN_HOURS)
-                showStatusSheet = false
-            },
-            onNavigateToDisabledProducts = {
-                // Nawiguj do listy produktów z argumentem filtra
-                navController.navigate(
-                    "${AppDestinations.PRODUCTS_LIST}?${AppDestinations.PRODUCTS_FILTER_ARG}=disabled"
-                )
-                showStatusSheet = false
-            }
-        )
-    }
-    if (showPauseDialog) {
-        PauseDialog(
-            onDismiss = { showPauseDialog = false },
-            // Zmieniony callback - przekazuje teraz 3 argumenty do ViewModelu
-            onConfirm = { minutes, msg, portals ->
-                ordersViewModel.setPause(minutes, msg, portals) // <-- Przekazujemy portale
-                showPauseDialog = false
-            }
-        )
-    }
-}

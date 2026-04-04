@@ -7,7 +7,6 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import com.itsorderkds.data.entity.mapper.OrderMapper
-import com.itsorderkds.data.model.AvailabilityNowDto
 import com.itsorderkds.data.model.CourierChangePayload
 import com.itsorderkds.data.model.ExternalDeliveryOutboxPayload
 import com.itsorderkds.data.model.ExternalCourierPayload
@@ -26,7 +25,6 @@ import com.itsorderkds.notifications.NotificationHelper
 import com.itsorderkds.ui.order.OrderStatusEnum
 import com.itsorderkds.ui.settings.print.PrinterService
 import com.itsorderkds.ui.theme.home.HomeActivity
-import com.itsorderkds.ui.theme.status.OpenHoursRepository
 import com.itsorderkds.util.AppPrefs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +42,7 @@ class SocketStaffEventsHandler @Inject constructor(
     private val socketEventsRepo: SocketEventsRepository,
     private val tokenProvider: TokenProvider,
     private val printerService: PrinterService,
-    private val appPreferencesManager: AppPreferencesManager,
-    private val openHoursRepository: OpenHoursRepository
+    private val appPreferencesManager: AppPreferencesManager
 ) {
     private val job = SupervisorJob()
     private val ioScope = CoroutineScope(job + Dispatchers.IO)
@@ -55,9 +52,6 @@ class SocketStaffEventsHandler @Inject constructor(
         handleStatusUpdate(args, action)
     }
 
-    private fun onOpenHoursUpdate(action: String): (Array<Any>) -> Unit = { args ->
-        handleStatusOpenHours(args, action)
-    }
 
 //    private fun onExternalCourierUpdate(action: String): (Array<Any>) -> Unit = { args ->
 //        handleExternalCourierUpdate(args, action)
@@ -76,10 +70,10 @@ class SocketStaffEventsHandler @Inject constructor(
         SocketEvent.ORDER_COMPLETED to onStatusUpdate(SocketAction.Action.ORDER_COMPLETED),
         SocketEvent.ORDER_NEW_COURIER to onStatusUpdate(SocketAction.Action.ORDER_NEW_COURIER),
         SocketEvent.ORDER_UPDATE to onStatusUpdate(SocketAction.Action.ORDER_UPDATE),
-        SocketEvent.OPEN_HOURS_UPDATED to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_UPDATED),
-        SocketEvent.OPEN_HOURS_PAUSE_CLEARED to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_PAUSE_CLEARED),
-        SocketEvent.OPEN_HOURS_CREATED to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_CREATED),
-        SocketEvent.OPEN_HOURS_PAUSE_SET to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_PAUSE_SET),
+//        SocketEvent.OPEN_HOURS_UPDATED to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_UPDATED),
+//        SocketEvent.OPEN_HOURS_PAUSE_CLEARED to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_PAUSE_CLEARED),
+//        SocketEvent.OPEN_HOURS_CREATED to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_CREATED),
+//        SocketEvent.OPEN_HOURS_PAUSE_SET to onOpenHoursUpdate(SocketAction.Action.OPEN_HOURS_PAUSE_SET),
         SocketEvent.ORDER_SEND_TO_EXTERNAL_SUCCESS to onExternalOutboxUpdate(SocketAction.Action.ORDER_SEND_TO_EXTERNAL_SUCCESS),
         SocketEvent.ORDER_SEND_TO_EXTERNAL_FAILED to onExternalOutboxUpdate(SocketAction.Action.ORDER_SEND_TO_EXTERNAL_FAILED),
         SocketEvent.ORDER_SEND_TO_EXTERNAL_COURIER to onExternalOutboxUpdate(SocketAction.Action.ORDER_SEND_TO_EXTERNAL_COURIER),
@@ -360,44 +354,6 @@ class SocketStaffEventsHandler @Inject constructor(
         }
 
         sendJsonBroadcast(SocketAction.Action.NEW_ORDER, json)
-    }
-
-    private fun handleStatusOpenHours(args: Array<Any>, action: String) {
-        val raw = args.firstOrNull()?.toString()
-        Timber.tag(TAG).i("handleStatusOpenHours Broadcast. Otrzymano raw: '$raw'")
-        sendJsonBroadcast(action, raw ?: "{}")
-
-        ioScope.launch {
-            if (action == SocketAction.Action.OPEN_HOURS_PAUSE_CLEARED) {
-                Timber.tag(TAG).i("Otrzymano OPEN_HOURS_PAUSE_CLEARED. Wymuszam odświeżenie z API.")
-                openHoursRepository.refresh()
-                return@launch
-            }
-
-            if (raw.isNullOrBlank() || raw == "{}") {
-                Timber.tag(TAG).w("OpenHours socket event był pusty (action: $action), odświeżam z API (fallback).")
-                openHoursRepository.refresh()
-                return@launch
-            }
-
-            runCatching {
-                gson.fromJson(raw, AvailabilityNowDto::class.java)
-            }.fold(
-                onSuccess = { dto ->
-                    if (dto != null) {
-                        openHoursRepository.updateStatusFromSocket(dto)
-                        Timber.tag(TAG).i("OpenHours updated from socket.")
-                    } else {
-                        Timber.tag(TAG).w("OpenHours socket event sparsowany jako null, odświeżam z API (fallback).")
-                        openHoursRepository.refresh()
-                    }
-                },
-                onFailure = {
-                    Timber.tag(TAG).e(it, "Failed to parse OpenHours status (action: $action), refreshing from API (fallback).")
-                    openHoursRepository.refresh()
-                }
-            )
-        }
     }
 
     private fun handleStatusUpdate(args: Array<Any>, action: String) {

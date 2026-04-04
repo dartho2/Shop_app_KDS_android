@@ -1,57 +1,52 @@
 package com.itsorderkds.ui.theme.home
 
+// ✅ DODANE IMPORTY
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.itsorderkds.R
 import com.itsorderkds.data.model.UpdateCourierOrder
 import com.itsorderkds.data.model.UpdateOrderData
 import com.itsorderkds.data.responses.UserRole
-//import com.itsorderkds.ui.dialog.AcceptOrderDialog
-import com.itsorderkds.ui.order.OrderStatusEnum
-import com.itsorderkds.ui.order.OrdersViewModel
-import com.itsorderkds.ui.theme.home.components.AssignmentPrompt
-import com.itsorderkds.ui.theme.home.view.CourierView
-import com.itsorderkds.ui.theme.home.view.StaffView
-
-// ✅ DODANE IMPORTY
-import androidx.compose.ui.res.stringResource
-import com.itsorderkds.R
 import com.itsorderkds.ui.dialog.AcceptOrderSheetContent
 import com.itsorderkds.ui.order.Callbacks
+import com.itsorderkds.ui.order.OrderStatusEnum
+import com.itsorderkds.ui.order.OrdersViewModel
+import com.itsorderkds.ui.theme.home.view.StaffView
 import timber.log.Timber
-import androidx.compose.runtime.key
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,41 +67,11 @@ fun HomeScreen(
     val dineInOrders by viewModel.dineInOrdersList.collectAsStateWithLifecycle()
     val groupedOrders by viewModel.groupedOrdersMap.collectAsStateWithLifecycle()
     // Jeśli pokazujemy prompt i lista pusta – dociągnij pojazdy
-    LaunchedEffect(uiState.showAssignmentPrompt) {
-        if (uiState.userRole == UserRole.COURIER &&
-            uiState.showAssignmentPrompt &&
-            !uiState.isFetchingVehicles &&
-            vehicles.isEmpty()
-        ) {
-            viewModel.fetchAvailableVehicles()
-        }
-    }
+
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (uiState.userRole) {
-            UserRole.COURIER -> {
-                // Bez dodatkowej animacji (Loader->App już wygładza przejście)
-                androidx.compose.animation.Crossfade(
-                    targetState = uiState.showAssignmentPrompt,
-                    animationSpec = androidx.compose.animation.core.tween(0),
-                    label = "CourierViewSwitch"
-                ) { showPrompt ->
-                    if (showPrompt) {
-                        AssignmentPrompt(
-                            vehicles = vehicles,
-                            isLoading = uiState.isFetchingVehicles,
-                            onStartShiftWithVehicle = viewModel::checkIn
-                        )
-                    } else {
-                        CourierView(
-                            viewModel = viewModel,
-                            selectedOrderIds = selectedIds,
-                            isSelectionModeActive = selectedIds.isNotEmpty(),
-                            onSelectionChange = viewModel::updateSelectedOrders
-                        )
-                    }
-                }
-            }
+
 
             else -> {
                 StaffView(
@@ -198,7 +163,11 @@ fun HomeScreen(
                                 )
                             },
                             onStatusChange = { newStatus ->
-                                viewModel.updateOrder(orderToShow.orderId, newStatus, UpdateOrderData())
+                                viewModel.updateOrder(
+                                    orderToShow.orderId,
+                                    newStatus,
+                                    UpdateOrderData()
+                                )
                             },
                             onCourierChange = { assign ->
                                 val courierId = if (assign) uiState.userId.orEmpty() else ""
@@ -209,7 +178,12 @@ fun HomeScreen(
                             },
                             onPrintOrder = viewModel::printOrder,
                             onSendExternalCourier = { order, courierDelivery, timePrepare, timeDelivery ->
-                                viewModel.sendToExternalApi(order, courierDelivery, timePrepare, timeDelivery)
+                                viewModel.sendToExternalApi(
+                                    order,
+                                    courierDelivery,
+                                    timePrepare,
+                                    timeDelivery
+                                )
                             },
                             onCancelExternalCourier = { order ->
                                 viewModel.cancelExternalCourier(order)
@@ -226,7 +200,10 @@ fun HomeScreen(
     if (uiState.showPrinterSelectionDialog && uiState.selectedOrderForPrinting != null) {
         PrinterSelectionDialog(
             onPrinterSelected = { printerIndex ->
-                viewModel.printOrderOnSelectedPrinter(uiState.selectedOrderForPrinting!!, printerIndex)
+                viewModel.printOrderOnSelectedPrinter(
+                    uiState.selectedOrderForPrinting!!,
+                    printerIndex
+                )
             },
             onDismiss = {
                 viewModel.dismissPrinterSelectionDialog()

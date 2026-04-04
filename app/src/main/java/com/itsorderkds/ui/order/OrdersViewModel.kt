@@ -37,9 +37,6 @@ import com.itsorderkds.service.SocketEventsRepository
 import com.itsorderkds.data.repository.SettingsRepository
 import com.itsorderkds.ui.settings.print.PrinterService
 import com.itsorderkds.ui.theme.home.AppDestinations
-import com.itsorderkds.ui.theme.status.OpenHoursRepository
-import com.itsorderkds.ui.theme.status.RestaurantStatusUi
-import com.itsorderkds.data.repository.VehiclesRepository
 import com.itsorderkds.util.AppPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -124,10 +121,8 @@ class OrdersViewModel @Inject constructor(
     private val repository: OrdersRepository,
     private val socketEventsRepo: SocketEventsRepository,
     private val tokenProvider: TokenProvider,
-    private val repositoryVehicle: VehiclesRepository,
     private val printerService: PrinterService,
     private val locationProvider: LocationProvider,
-    private val openHoursRepository: OpenHoursRepository,
     private val settingsRepository: SettingsRepository,
     private val appPreferencesManager: com.itsorderkds.data.preferences.AppPreferencesManager,
     private val savedStateHandle: androidx.lifecycle.SavedStateHandle
@@ -143,7 +138,6 @@ class OrdersViewModel @Inject constructor(
 
     //    private val _restaurantStatus = MutableStateFlow<RestaurantStatusUi?>(null)
 //    val restaurantStatus: StateFlow<RestaurantStatusUi?> = _restaurantStatus.asStateFlow()
-    val restaurantStatus: StateFlow<RestaurantStatusUi?> = openHoursRepository.status
     private val _lockedOrderIds = MutableStateFlow<Set<String>>(emptySet())
     val lockedOrderIds: StateFlow<Set<String>> = _lockedOrderIds.asStateFlow()
     private val lockJobs = mutableMapOf<String, Job>()
@@ -348,7 +342,6 @@ class OrdersViewModel @Inject constructor(
         observeSocketEvents()
         observePendingOrdersQueue()
         monitorHomeReadiness()
-        observeRestaurantStatusAutoRefresh()
         observeSocketConnection()
         observeCurrentlyOpenDialogStatus()
     }
@@ -772,28 +765,6 @@ class OrdersViewModel @Inject constructor(
         }
     }
 
-    private fun observeRestaurantStatusAutoRefresh() {
-        openHoursRepository.status
-            .onEach { ui ->
-                val iso = ui?.untilIso
-                statusAutoRefreshJob?.cancel()
-                if (!iso.isNullOrBlank()) {
-                    val target =
-                        runCatching { java.time.Instant.parse(iso).toEpochMilli() }.getOrNull()
-                    val now = System.currentTimeMillis()
-                    val diff = (target ?: 0L) - now
-                    if (diff <= 0L) {
-                        openHoursRepository.refresh()
-                    } else {
-                        statusAutoRefreshJob = viewModelScope.launch {
-                            delay(diff + 2000)
-                            openHoursRepository.refresh()
-                        }
-                    }
-                }
-            }
-            .launchIn(viewModelScope)
-    }
 
     override fun onCleared() {
         statusAutoRefreshJob?.cancel()
@@ -802,51 +773,12 @@ class OrdersViewModel @Inject constructor(
         super.onCleared()
     }
 
-    fun safelyRefreshStatus(kind: String? = null) = viewModelScope.launch {
-        when (val res = openHoursRepository.refresh(kind)) {
-            // is Resource.Success -> _restaurantStatus.value = res.value // <-- TĘ LINIĘ USUŃ
-            is Resource.Success -> Unit // Repozytorium samo zaktualizowało swój flow
-            is Resource.Failure -> _event.emit(OrderEvent.Error(res.errorCode, res.errorBody))
-            Resource.Loading -> Unit
-        }
-    }
 
-    fun setPause(
-        minutes: Int,
-        message: String?,
-        portals: List<SourceEnum>? // <-- NOWY PARAMETR
-    ) = viewModelScope.launch {
 
-        // Przekazujemy wszystkie parametry do repozytorium
-        when (val res = openHoursRepository.pause(minutes, message, portals)) {
-            is Resource.Success -> {
-                _event.emit(OrderEvent.Success("Ustawiono pauzę na $minutes min."))
-            }
 
-            is Resource.Failure -> _event.emit(OrderEvent.Error(res.errorCode, res.errorBody))
-            Resource.Loading -> Unit
-        }
-    }
 
-    fun clearPause() = viewModelScope.launch {
-        when (val res = openHoursRepository.clearPause()) {
-            is Resource.Success -> {
-                // _restaurantStatus.value = res.value // <-- TĘ LINIĘ USUŃ
-                _event.emit(OrderEvent.Success("Pauza została zdjęta."))
-            }
 
-            is Resource.Failure -> _event.emit(OrderEvent.Error(res.errorCode, res.errorBody))
-            Resource.Loading -> Unit
-        }
-    }
 
-    fun setClosed(closed: Boolean, portals: List<SourceEnum>? = null) = viewModelScope.launch {
-        when (val res = openHoursRepository.setClosed(closed, portals = portals)) {
-            is Resource.Success -> _event.emit(OrderEvent.Success(if (closed) "Sklep zamknięty." else "Sklep otwarty."))
-            is Resource.Failure -> _event.emit(OrderEvent.Error(res.errorCode, res.errorBody))
-            Resource.Loading -> Unit
-        }
-    }
 
     fun updateSelectedOrders(newSelection: Set<String>, newStatus: OrderStatusEnum?) {
         val filtered = newSelection - _lockedOrderIds.value
@@ -854,42 +786,6 @@ class OrdersViewModel @Inject constructor(
         _currentBatchStatus.value = if (filtered.isEmpty()) null else newStatus
     }
 
-    fun fetchAvailableVehicles() = viewModelScope.launch {
-        _uiState.update { it.copy(isFetchingVehicles = true) }
-        when (val res = repositoryVehicle.getVehicles()) {
-            is Resource.Success -> {
-                _vehicles.value = res.value
-                _uiState.update { it.copy(isFetchingVehicles = false) }
-            }
-
-            is Resource.Failure -> {
-                _vehicles.value = emptyList()
-                _uiState.update { it.copy(isFetchingVehicles = false) }
-            }
-
-            else -> Unit
-        }
-    }
-
-    fun getOrderTras() = viewModelScope.launch {
-        _uiState.update { it.copy(routeState = OrderRouteState.Loading) }
-        when (val res = repository.getOrderTras()) {
-            is Resource.Success -> processRouteData(res.value)
-            is Resource.Failure -> {
-                _routeClusters.value = emptyList()
-                _uiState.update {
-                    it.copy(
-                        routeState = OrderRouteState.Error(
-                            res.errorCode,
-                            res.errorBody
-                        )
-                    )
-                }
-            }
-
-            is Resource.Loading -> Unit
-        }
-    }
 
     fun updateOrderCourier(orderId: String, body: UpdateCourierOrder) =
         executeOrderUpdate { repository.assignCourier(orderId, body) }
@@ -910,132 +806,6 @@ class OrdersViewModel @Inject constructor(
         }
 
         executeOrderUpdate { repository.updateOrder(orderId, status, data) }
-    }
-
-    fun checkIn(vehicle: Vehicle) = viewModelScope.launch {
-        _uiState.update { it.copy(isGlobalLoading = true) }
-        try {
-            val location = locationProvider.getCurrentLocation()
-            if (location == null) {
-                _event.emit(
-                    OrderEvent.Error(
-                        null,
-                        "Nie można pobrać lokalizacji GPS. Upewnij się, że:\n" +
-                                "1. GPS jest włączony w ustawieniach tabletu/telefonu\n" +
-                                "2. Jesteś na zewnątrz lub blisko okna (GPS nie działa w budynkach)\n" +
-                                "3. Poczekaj chwilę i spróbuj ponownie"
-                    )
-                )
-                _uiState.update { s -> s.copy(isGlobalLoading = false) }
-                return@launch
-            }
-            val checkInRequest = ShiftCheckIn(
-                date = LocalDate.now().toString(),
-                latitude = location.latitude,
-                longitude = location.longitude,
-                vehicleId = vehicle.id
-            )
-            when (val resource = repository.checkIn(checkInRequest)) {
-                is Resource.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isGlobalLoading = false,
-                            isShiftActive = true,
-                            showAssignmentPrompt = false
-                        )
-                    }
-                    _event.emit(OrderEvent.Success("Zmiana została rozpoczęta."))
-                    getOrderTras()
-                }
-
-                is Resource.Failure -> {
-                    _event.emit(OrderEvent.Error(resource.errorCode, resource.errorBody))
-                    if (resource.errorCode == 409) {
-                        _vehicles.update { currentList -> currentList.filter { it.id != vehicle.id } }
-                    } else {
-                        fetchAvailableVehicles()
-                    }
-                    _uiState.update { it.copy(isGlobalLoading = false) }
-                }
-
-                else -> Unit
-            }
-        } catch (e: LocationException) {
-            // Brak uprawnień - poproś użytkownika o przyznanie uprawnień
-            _event.emit(OrderEvent.RequestLocationPermission)
-            _uiState.update { it.copy(isGlobalLoading = false) }
-        }
-    }
-
-    fun checkOut(body: ShiftCheckOut) = viewModelScope.launch {
-        _uiState.update { it.copy(isGlobalLoading = true) }
-        when (repository.checkOut(body)) {
-            is Resource.Success -> {
-                _uiState.update {
-                    it.copy(
-                        isGlobalLoading = false,
-                        isShiftActive = false,
-                        showAssignmentPrompt = true
-                    )
-                }
-                fetchAvailableVehicles()
-            }
-
-            is Resource.Failure -> _uiState.update { it.copy(isGlobalLoading = false) }
-            else -> Unit
-        }
-    }
-
-    fun updateOrdersStatusWithLocation(orderIds: Set<String>, newStatus: OrderStatusEnum) {
-        if (orderIds.isEmpty()) return
-        lockOrders(orderIds)
-        viewModelScope.launch {
-            _uiState.update { it.copy(isGlobalLoading = true) }
-            try {
-                val location = locationProvider.getCurrentLocation()
-                if (location == null) {
-                    _event.emit(
-                        OrderEvent.Error(
-                            null,
-                            "Nie można pobrać lokalizacji GPS. Upewnij się, że:\n" +
-                                    "1. GPS jest włączony w ustawieniach tabletu/telefonu\n" +
-                                    "2. Jesteś na zewnątrz lub blisko okna\n" +
-                                    "3. Poczekaj chwilę i spróbuj ponownie"
-                        )
-                    )
-                    unlockOrders(orderIds)
-                    _uiState.update { s -> s.copy(isGlobalLoading = false) }
-                    return@launch
-                }
-                val requestBody = BatchUpdateStatusRequest(
-                    orderIds = orderIds.toSet(),
-                    newStatus = newStatus.name.lowercase(),
-                    courierId = _uiState.value.userId,
-                    lastKnownLocation = GeoPoint(location.latitude, location.longitude),
-                    lastLocationTimestamp = Instant.now().toString()
-                )
-                when (val result = repository.batchUpdateOrderStatus(requestBody)) {
-                    is Resource.Success -> {
-                        mergeUpdatedOrdersIntoRoute(result.value)
-                        clearSelection()
-                        _event.emit(OrderEvent.Success("Status zamówień zaktualizowany."))
-                    }
-
-                    is Resource.Failure -> {
-                        unlockOrders(orderIds)
-                        _event.emit(OrderEvent.Error(result.errorCode, result.errorBody))
-                    }
-
-                    is Resource.Loading -> Unit
-                }
-            } catch (e: LocationException) {
-                unlockOrders(orderIds)
-                // Brak uprawnień - poproś użytkownika o przyznanie uprawnień
-                _event.emit(OrderEvent.RequestLocationPermission)
-            } finally {
-                _uiState.update { it.copy(isGlobalLoading = false) }
-            }
-        }
     }
 
     fun syncOrdersFromApiStartOfDay() {
@@ -1331,16 +1101,6 @@ class OrdersViewModel @Inject constructor(
 
         fetchGeneralSettings()
 
-        if (role == UserRole.COURIER) {
-            checkShiftStatusSuspend()
-            if (_uiState.value.isShiftActive) {
-                getOrderTras()
-            } else {
-                fetchAvailableVehicles()
-            }
-        } else {
-//            syncOrdersFromApiStartOfDay()
-        }
         _uiState.update { it.copy(isInitializing = false) }
     }
 
@@ -1801,22 +1561,6 @@ class OrdersViewModel @Inject constructor(
         }
     }
 
-    private fun mergeUpdatedOrdersIntoRoute(updated: List<OrderTras>) {
-        _uiState.update { state ->
-            val current = state.routeState
-            if (current is OrderRouteState.Success) {
-                val list = current.route.toMutableList()
-                updated.forEach { u ->
-                    val idx = list.indexOfFirst { it.id == u.id }
-                    if (idx != -1) list[idx] = u
-                }
-                state.copy(routeState = OrderRouteState.Success(list))
-            } else {
-                getOrderTras()
-                state
-            }
-        }
-    }
 
     private fun lockOrders(ids: Set<String>) {
         if (ids.isEmpty()) return

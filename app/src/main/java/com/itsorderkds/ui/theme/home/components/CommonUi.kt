@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.itsorderkds.R
 import com.itsorderkds.data.model.Vehicle
-import com.itsorderkds.ui.product.StatePlaceholder
 import com.itsorderkds.ui.theme.home.AppDestinations
 import java.time.LocalDate
 import java.time.ZoneId
@@ -78,12 +77,9 @@ fun DrawerContent(
     userRole: String?, // Poprawnie zdefiniowany jako nullable
     onLogout: () -> Unit,
     onNavigateToHome: () -> Unit,
-    onNavigateToProducts: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onCloseDrawer: () -> Unit,
     showHome: Boolean = true,
-    showProducts: Boolean = true,
-    showSettings: Boolean = true,
 ) {
     val context = LocalContext.current
 
@@ -142,26 +138,6 @@ fun DrawerContent(
                         label = { Text("Główna") },
                         selected = currentRoute == AppDestinations.HOME,
                         onClick = { onNavigateToHome() },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-
-                if (showProducts) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Fastfood, contentDescription = null) },
-                        label = { Text("Produkty") },
-                        selected = currentRoute == AppDestinations.PRODUCTS_LIST,
-                        onClick = { onNavigateToProducts() },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-
-                if (showSettings) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("Ustawienia") },
-                        selected = currentRoute == AppDestinations.SETTINGS_MAIN,
-                        onClick = { onNavigateToSettings() },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
@@ -481,11 +457,29 @@ fun EmptyPlaceholder() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        StatePlaceholder(
-            icon = Icons.Default.SentimentDissatisfied,
-            title = "Brak wyników",
-            subtitle = "Brak zamówień do wyświetlenia."
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.SentimentDissatisfied,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Brak wyników",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Brak zamówień do wyświetlenia.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
     }
 }

@@ -70,7 +70,6 @@ import javax.inject.Inject
 
 @Composable
 fun SettingsMainScreen(
-    onNavigateToOpenHours: () -> Unit,
     onNavigateToNotificationSettings: () -> Unit,
     onNavigateToPrintersList: () -> Unit,
     onNavigateToPrintSettings: () -> Unit,
@@ -136,17 +135,7 @@ fun SettingsMainScreen(
                 iconTint = Color(0xFF00BCD4)
             )
         }
-        // Godziny otwarcia - zielony
-        item {
-            SettingsItem(
-                icon = Icons.Default.AccessTime,
-                title = stringResource(R.string.settings_open_hours_title),
-                subtitle = stringResource(R.string.settings_open_hours_subtitle),
-                onClick = onNavigateToOpenHours,
-                iconBackgroundColor = Color(0xFF4CAF50).copy(alpha = 0.15f),
-                iconTint = Color(0xFF4CAF50)
-            )
-        }
+        // KDS nie zarządza godzinami otwarcia - usunięto
     }
 }
 

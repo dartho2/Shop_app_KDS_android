@@ -1,0 +1,126 @@
+﻿
+> Configure project :app
+WARNING: The option setting 'android.defaults.buildfeatures.buildconfig=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 9.0 of the Android Gradle plugin.
+To keep using this feature, add the following to your module-level build.gradle files:
+    android.buildFeatures.buildConfig = true
+or from Android Studio, click: `Refactor` > `Migrate BuildConfig to Gradle Build Files`.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:extractDebugNativeDebugMetadata UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:dataBindingTriggerDebug UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateSafeArgsDebug UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileDebugKotlin
+.\gradlew : e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/data/model/LanguageOption.kt:5:27 Unresolved reference 'product'.
+At line:1 char:21
++ ... L:\SHOP_APP_KDS; .\gradlew assembleDebug --console=plain 2>&1 | Out-F ...
++                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (e: file:///L:/S...ence 'product'.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:95:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:96:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:97:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:98:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:99:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:100:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:101:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:890:38 Unresolved reference 'ProductsViewModel'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:892:17 Unresolved reference 'CategoriesListScreen'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:894:41 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:894:53 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:915:38 Unresolved reference 'ProductsViewModel'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:917:17 Unresolved reference 'CategoryProductsScreen'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:921:40 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:937:17 Unresolved reference 'ProductsScreen'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:939:40 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:948:17 Unresolved reference 'ProductDetailScreen'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:968:63 Unresolved reference 'OpenHoursScreen'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1015:29 Unresolved reference 'ProductsViewModel'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1016:36 Property delegate must have a 'getValue(Nothing?, KProperty0<ERROR CLASS: Cannot infer argument for type parameter T>)' method. 
+None of the following functions is applicable:
+fun <T> State<T>.getValue(thisObj: Any?, property: KProperty<*>): T
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1016:39 Unresolved reference 'uiState'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1019:21 Unresolved reference 'IntegratedSearchBar'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1020:41 Unresolved reference 'searchQuery'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1021:45 Unresolved reference 'onSearchQueryChange'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1080:25 Unresolved reference 'ProductDetailViewModel'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1081:32 Property delegate must have a 'getValue(Nothing?, KProperty0<ERROR CLASS: Cannot infer argument for type parameter T>)' method. 
+None of the following functions is applicable:
+fun <T> State<T>.getValue(thisObj: Any?, property: KProperty<*>): T
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1081:35 Unresolved reference 'uiState'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1082:42 Unresolved reference 'saveProduct'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1082:74 Unresolved reference 'isSaving'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1083:21 @Composable invocations can only happen from the context of a @Composable function
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/HomeActivity.kt:1083:26 @Composable invocations can only happen from the context of a @Composable function
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/components/CommonUi.kt:68:27 Unresolved reference 'product'.
+e: file:///L:/SHOP_APP_KDS/app/src/main/java/com/itsorderkds/ui/theme/home/components/CommonUi.kt:484:9 Unresolved reference 'StatePlaceholder'.
+
+> Task :app:compileDebugKotlin FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 7s
+38 actionable tasks: 1 executed, 37 up-to-date

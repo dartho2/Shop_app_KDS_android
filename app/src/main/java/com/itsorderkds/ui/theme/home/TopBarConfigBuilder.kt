@@ -21,14 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.itsorderkds.R
-import com.itsorderkds.data.enums.RestaurantStatus
 import com.itsorderkds.data.responses.UserRole
 import com.itsorderkds.service.SocketEventsRepository
 import com.itsorderkds.ui.order.OrdersViewModel
-import com.itsorderkds.ui.theme.home.components.RestaurantStatusChip
 import com.itsorderkds.ui.theme.home.components.SocketStatusIndicator
-import com.itsorderkds.ui.theme.status.PauseDialog
-import com.itsorderkds.ui.theme.status.RestaurantStatusSheet
+
 
 /**
  * buildTopBarConfig - mapuje aktualną route na TopBarConfig
@@ -49,7 +46,6 @@ fun buildTopBarConfig(
     navController: NavHostController,
     onMenuClick: () -> Unit,
     ordersViewModel: OrdersViewModel,
-    onCheckOut: () -> Unit,
     socketEventsRepo: SocketEventsRepository
 ): TopBarConfig {
     val ordersUiState = ordersViewModel.uiState.collectAsStateWithLifecycle().value
@@ -71,7 +67,7 @@ fun buildTopBarConfig(
                 title = { /* Pusty tytuł na Home */ },
                 navigationIcon = NavigationIconType.MENU,
                 onNavigationClick = onMenuClick,
-                actions = buildHomeActions(isHomeScreen, isCourier, ordersViewModel, onCheckOut),
+                actions = buildHomeActions(isHomeScreen,  ordersViewModel),
                 trailingContent = if (!isCourier && isHomeScreen) {
                     {
                         // RestaurantStatusActionItem dla Staff (z wskaźnikiem Socket)
@@ -83,54 +79,6 @@ fun buildTopBarConfig(
                     }
                 } else null
             )
-        }
-
-        // PRODUCTS LIST - SearchBar zamiast tekstu
-        currentRoute.startsWith(AppDestinations.PRODUCTS_LIST) -> {
-            val backStackEntry = remember(navController.currentBackStackEntry) {
-                try {
-                    navController.getBackStackEntry(AppDestinations.PRODUCTS_LIST_TEMPLATE)
-                } catch (_: Exception) {
-                    null
-                }
-            }
-
-            if (backStackEntry != null) {
-                // TODO: Zamiast hiltViewModel tutaj, użyj integracji z IntegratedSearchBar
-                // na razie fallback do standardowego tytułu
-                config = TopBarConfig(
-                    title = { Text(stringResource(R.string.products_title)) },
-                    navigationIcon = NavigationIconType.BACK,
-                    onNavigationClick = { navController.navigateUp() }
-                )
-            }
-        }
-
-        // PRODUCT DETAIL - z Save button'em
-        currentRoute.startsWith(AppDestinations.PRODUCT_DETAIL_PREFIX) -> {
-            val backStackEntry = remember(navController.currentBackStackEntry) {
-                try {
-                    navController.getBackStackEntry(AppDestinations.PRODUCT_DETAIL_TEMPLATE)
-                } catch (_: Exception) {
-                    null
-                }
-            }
-
-            if (backStackEntry != null) {
-                config = TopBarConfig(
-                    title = { Text(stringResource(R.string.product_details_title)) },
-                    navigationIcon = NavigationIconType.BACK,
-                    onNavigationClick = { navController.navigateUp() },
-                    actions = listOf(
-                        TopBarAction(
-                            icon = Icons.Default.Check,
-                            contentDescription = stringResource(R.string.common_save),
-                            onClick = { /* TODO: save logic */ },
-                            enabled = true
-                        )
-                    )
-                )
-            }
         }
 
         // SETTINGS MAIN
@@ -169,14 +117,6 @@ fun buildTopBarConfig(
             )
         }
 
-        // SETTINGS: OPEN HOURS
-        currentRoute == AppDestinations.SETTINGS_OPEN_HOURS -> {
-            config = TopBarConfig(
-                title = { Text(stringResource(R.string.settings_open_hours_title)) },
-                navigationIcon = NavigationIconType.BACK,
-                onNavigationClick = { navController.navigateUp() }
-            )
-        }
 
         // SETTINGS: NOTIFICATIONS
         currentRoute == AppDestinations.SETTINGS_NOTIFICATIONS -> {
@@ -217,23 +157,10 @@ fun buildTopBarConfig(
 @Composable
 private fun buildHomeActions(
     isHomeScreen: Boolean,
-    isCourier: Boolean,
     ordersViewModel: OrdersViewModel,
-    onCheckOut: () -> Unit
 ): List<TopBarAction> {
     val ordersUiState = ordersViewModel.uiState.collectAsStateWithLifecycle().value
     val actions = mutableListOf<TopBarAction>()
-
-    // Courier: ShiftStatusAction (jeśli shift aktywny)
-    if (isCourier && ordersUiState.isShiftActive) {
-        actions.add(
-            TopBarAction(
-                icon = Icons.Default.Info,
-                contentDescription = "Shift Status",
-                onClick = onCheckOut
-            )
-        )
-    }
 
     return actions
 }
@@ -252,7 +179,7 @@ private fun RestaurantStatusActionItem(
     navController: NavHostController,
     socketEventsRepo: SocketEventsRepository
 ) {
-    val statusUi by ordersViewModel.restaurantStatus.collectAsStateWithLifecycle()
+
     var showStatusSheet by remember { mutableStateOf(false) }
     var showPauseDialog by remember { mutableStateOf(false) }
 
@@ -268,51 +195,7 @@ private fun RestaurantStatusActionItem(
         )
 
         // Status restauracji
-        RestaurantStatusChip(
-            status = statusUi?.status ?: RestaurantStatus.CLOSED,
-            onClick = { showStatusSheet = true }
-        )
-    }
 
-    if (showStatusSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        RestaurantStatusSheet(
-            status = statusUi?.status,
-            message = statusUi?.message,
-            untilIso = statusUi?.untilIso,
-            sheetState = sheetState,
-            onDismiss = { showStatusSheet = false },
-            onOpen = { portals ->
-                ordersViewModel.setClosed(false, portals)
-                showStatusSheet = false
-            },
-            onClose = { portals ->
-                ordersViewModel.setClosed(true, portals)
-                showStatusSheet = false
-            },
-            onPauseClick = { showStatusSheet = false; showPauseDialog = true },
-            onClearPause = { ordersViewModel.clearPause(); showStatusSheet = false },
-            onEditOpenHours = {
-                navController.navigate(AppDestinations.SETTINGS_OPEN_HOURS)
-                showStatusSheet = false
-            },
-            onNavigateToDisabledProducts = {
-                navController.navigate(
-                    "${AppDestinations.PRODUCTS_LIST}?${AppDestinations.PRODUCTS_FILTER_ARG}=disabled"
-                )
-                showStatusSheet = false
-            }
-        )
-    }
-
-    if (showPauseDialog) {
-        PauseDialog(
-            onDismiss = { showPauseDialog = false },
-            onConfirm = { minutes, msg, portals ->
-                ordersViewModel.setPause(minutes, msg, portals)
-                showPauseDialog = false
-            }
-        )
     }
 }
 

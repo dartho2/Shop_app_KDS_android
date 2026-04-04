@@ -9,22 +9,15 @@ import com.itsorderkds.data.database.AppDatabase
 import com.itsorderkds.data.network.AuthApi
 import com.itsorderkds.data.network.AuthInterceptor
 import com.itsorderkds.data.network.BaseUrlInterceptor
-import com.itsorderkds.data.network.ApiService
+import com.itsorderkds.data.network.KdsApi
 import com.itsorderkds.data.network.LanguageInterceptor
-import com.itsorderkds.data.network.OpenHoursApi
 import com.itsorderkds.data.network.OrderApi
 import com.itsorderkds.data.network.SettingsApi
 import com.itsorderkds.data.network.TokenAuthenticator
 import com.itsorderkds.data.network.preferences.DataStoreTokenProvider
 import com.itsorderkds.data.network.preferences.TokenProvider
 import com.itsorderkds.data.preferences.AppPreferencesManager
-import com.itsorderkds.ui.category.CategoryRepository
-import com.itsorderkds.data.network.ProductApi
-import com.itsorderkds.data.repository.ProductsRepository
 import com.itsorderkds.ui.settings.log.LogsApi
-import com.itsorderkds.ui.theme.GlobalMessageManager
-import com.itsorderkds.data.network.VehicleApi
-import com.itsorderkds.data.repository.VehiclesRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -75,49 +68,12 @@ object NetworkModule {
     fun provideLogsApi(@Named("auth_retrofit") retrofit: Retrofit): LogsApi {
         return retrofit.create(LogsApi::class.java)
     }
-    @Provides
-    @Singleton
-    fun provideOpenHoursApi(@Named("auth_retrofit") retrofit: Retrofit): OpenHoursApi {
-        return retrofit.create(OpenHoursApi::class.java)
-    }
+
     @Provides
     @Singleton
     fun provideSettingsApi(@Named("auth_retrofit") retrofit: Retrofit): SettingsApi {
         return retrofit.create(SettingsApi::class.java)
     }
-    @Provides @Singleton
-    fun provideProductApi(
-        @Named("auth_retrofit") retrofit: Retrofit     // <-- to właśnie brakowało
-    ): ProductApi = retrofit.create(ProductApi::class.java)
-
-    @Provides @Singleton
-    fun provideVehicleApi(
-        @Named("auth_retrofit") retrofit: Retrofit     // <-- to właśnie brakowało
-    ): VehicleApi = retrofit.create(VehicleApi::class.java)
-
-    @Provides @Singleton
-    fun provideCategoryApi(
-        @Named("auth_retrofit") retrofit: Retrofit     // <-- to właśnie brakowało
-    ): ApiService = retrofit.create(ApiService::class.java)
-
-    @Provides @Singleton
-    fun provideCategoryRepository(
-        api: ApiService,
-        messageManager: GlobalMessageManager
-    ) = CategoryRepository(api, messageManager)
-
-
-    @Provides @Singleton
-    fun provideProductsRepository(
-        api: ProductApi,
-        messageManager: GlobalMessageManager
-    ) = ProductsRepository(api, messageManager)
-
-    @Provides @Singleton
-    fun provideVehicleRepository(
-        api: VehicleApi,
-        messageManager: GlobalMessageManager
-    ) = VehiclesRepository(api, messageManager)
 
     @Provides
     @Singleton

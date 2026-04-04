@@ -3,7 +3,6 @@ package com.itsorderkds.data.model
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 import com.itsorderkds.data.util.FlexibleDoubleAdapter
-import com.itsorderkds.ui.product.detail.ProductDetailUiState
 
 data class Product(
     @SerializedName("id") val id: String,
@@ -193,49 +192,3 @@ data class UpdateProductStatusRequest(
     val stock_status: StockStatusEnum,
     val status: Boolean? = null,
 )
-fun Product.toUpdateRequest(ui: ProductDetailUiState): UpdateProductRequest {
-    val pt = productType?.name ?: "PHYSICAL"
-    val tp = type?.name ?: "SIMPLE"
-
-    // discount — jeśli w modelu masz Number? albo String?, łykamy oba warianty:
-    val discountDouble =
-        (discount as? Number)?.toDouble()
-            ?: (discount as? String)?.toDoubleOrNull()
-            ?: throw IllegalArgumentException("discount required")
-
-    val shortDesc = shortDescription?.takeIf { it.isNotBlank() }
-        ?: throw IllegalArgumentException("short_description required")
-
-    val unitValue = unit?.takeIf { it.isNotBlank() }
-        ?: throw IllegalArgumentException("unit required")
-
-    val digitalIds = if (pt == "DIGITAL") {
-        ui.digitalFileIds.takeIf { it.isNotEmpty() }
-            ?: throw IllegalArgumentException("digital_file_ids required for DIGITAL")
-    } else null
-
-    return UpdateProductRequest(
-        name = name,
-        short_description = shortDesc,
-        description = description,
-        sku = requireNotNull(sku?.takeIf { it.isNotBlank() }) { "sku required" },
-        unit = unitValue,
-        price = requireNotNull(price) { "price required" },
-        sale_price = salePrice,
-        discount = discountDouble,
-        product_type = pt,
-        type = tp,
-        quantity = requireNotNull(quantity) { "quantity required" },
-        is_sale_enable = if (isSaleEnable == true) 1 else 0, // number
-        stock_status = stockStatus.name,
-        status = ui.statusEnabled,                            // boolean
-        categories = ui.categoryIds,                          // wymagane
-        attributes_ids = ui.attributeIds.takeIf { it.isNotEmpty() }, // ★ null gdy pusto
-        availability = availability ?: Availability(),
-        digital_file_ids = digitalIds,
-        tax_id = taxId,
-        product_thumbnail_id = productThumbnailId,
-        related_products = relatedProducts,
-        cross_sell_products = crossSellProducts
-    )
-}

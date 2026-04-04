@@ -11,14 +11,7 @@
         android:label="@string/Orders"
         tools:layout="@layout/fragment_home">
     </fragment>
-    <fragment
-        android:id="@+id/productsFragment"
-        android:name="com.itsorderkds.ui.product.ProductsFragment"
-        android:label="Products" >
-        <action
-            android:id="@+id/action_productsFragment_to_homeFragment"
-            app:destination="@id/homeFragment" />
-    </fragment>
+
     <fragment
         android:id="@+id/SettingsFragment"
         android:name="com.itsorderkds.ui.settings.SettingsFragment"

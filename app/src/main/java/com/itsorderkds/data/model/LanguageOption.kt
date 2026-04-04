@@ -2,7 +2,6 @@ package com.itsorderkds.data.model
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 import com.itsorderkds.data.util.FlexibleDoubleAdapter
-import com.itsorderkds.ui.product.detail.ProductDetailUiState
 
 
 data class LanguageOption (

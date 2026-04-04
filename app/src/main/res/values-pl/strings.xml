@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ITS Order</string>
+    <string name="app_name">ITS KDS</string>
     <string name="hello_blank_fragment">Witaj pusty fragment</string>
     <string name="notification_channel_order_id" content_override="true" translatable="false">wooandroid_notification_channel_order_id</string>
     <string name="notification_channel_review_id" content_override="true" translatable="false">wooandroid_notification_channel_review_id</string>
