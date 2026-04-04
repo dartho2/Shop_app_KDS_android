@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="@dimen/spacing_xs">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardOrder"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        style="@style/ITS_MaterialCardView"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cardOrderContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm">
+
+            <FrameLayout
+                android:id="@+id/source"
+                android:layout_width="@dimen/image_minor_100"
+                android:layout_height="@dimen/image_minor_100"
+                android:visibility="visible"
+                android:padding="@dimen/spacing_sm"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent">
+
+                <ImageView
+                    android:id="@+id/sourceIcon"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/logo_bolt_80"
+                    app:iconSize="@dimen/major_100" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvOrderNumber"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Zamówienie #123"
+                style="@style/TextAppearance.Material3.BodyLarge"
+                app:layout_constraintBaseline_toBaselineOf="@+id/tvOrderTotal"
+                app:layout_constraintStart_toEndOf="@+id/source"
+                app:layout_constraintEnd_toStartOf="@+id/tvOrderTotal"
+                android:layout_marginEnd="@dimen/spacing_sm" />
+
+            <TextView
+                android:id="@+id/tvOrderTotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="135,00 €"
+                style="@style/TextAppearance.Material3.BodyMedium"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBaseline_toBaselineOf="@id/tvOrderNumber" />
+
+            <TextView
+                android:id="@+id/tvOrderName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Alicja aaa"
+                style="@style/TextAppearance.Material3.BodyMedium"
+                app:layout_constraintStart_toStartOf="@id/tvOrderNumber"
+                app:layout_constraintTop_toBottomOf="@id/tvOrderNumber"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <View
+                android:id="@+id/divider"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_marginTop="@dimen/spacing_none"
+                app:layout_constraintTop_toBottomOf="@id/tvOrderName"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
+</androidx.constraintlayout.widget.ConstraintLayout>

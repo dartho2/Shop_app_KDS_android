@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.itsorderkds.ui.theme.home.HomeFragment"
+        android:label="@string/Orders"
+        tools:layout="@layout/fragment_home">
+    </fragment>
+    <fragment
+        android:id="@+id/productsFragment"
+        android:name="com.itsorderkds.ui.product.ProductsFragment"
+        android:label="Products" >
+        <action
+            android:id="@+id/action_productsFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/SettingsFragment"
+        android:name="com.itsorderkds.ui.settings.SettingsFragment"
+        android:label="Ustawienia"
+        tools:layout="@layout/fragment_settings" />
+
+    <!--  (opcjonalnie) global action – dzięki temu możesz wywołać przejście z dowolnego miejsca  -->
+    <action
+        android:id="@+id/action_printer_setting"
+        app:destination="@id/printerSettingsFragment"
+        app:launchSingleTop="true"/>
+</navigation>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph_settings"
+    app:startDestination="@id/SettingsFragment">
+
+    <fragment
+        android:id="@+id/SettingsFragment"
+        android:name="com.itsorderkds.ui.settings.SettingsFragment"
+        tools:layout="@layout/fragment_settings"
+        android:label="Ustawienia">
+        <action
+            android:id="@+id/action_SettingsFragment_to_printerSettingsFragment"
+            app:destination="@id/printerSettingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/printerSettingsFragment"
+        android:name="com.itsorderkds.ui.settings.printer.PrinterSettingsFragment"
+        tools:layout="@layout/fragment_printer_settings"
+        android:label="Drukarka">
+        <action
+            android:id="@+id/action_printerSettingsFragment_to_SettingsFragment"
+            app:destination="@id/SettingsFragment" />
+    </fragment>
+
+</navigation>

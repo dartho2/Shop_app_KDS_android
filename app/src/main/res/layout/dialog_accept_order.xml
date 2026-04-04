@@ -1,0 +1,296 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:id="@+id/dialogAcceptOrder"
+    android:padding="24dp">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCourierOrder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Akceptuj"
+        android:visibility="gone"
+        android:layout_marginTop="16dp"
+        style="@style/Widget.Material3.Button.IconButton.Filled"
+        app:cornerRadius="16dp"
+        app:iconPadding="8dp" />
+
+    <LinearLayout
+        android:id="@+id/layoutStatusChange"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="visible"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+<!--        <TextView-->
+<!--            android:id="@+id/tvDialogActionStatus"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Zmień status"-->
+<!--            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"-->
+<!--            android:gravity="center"-->
+<!--            android:layout_marginBottom="12dp" />-->
+
+        <!-- Dwukolumnowy układ przycisków -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:weightSum="2">
+
+            <!-- Lewa kolumna: drukuj i wyślij -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPrint"
+                    style="@style/App.StatusButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:iconTint="@null"
+                    app:icon="@drawable/print"
+                    android:text="Drukuj" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSend"
+                    style="@style/App.StatusButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Wyślij"
+                    app:icon="@drawable/stava"
+                    app:iconTint="@null" />
+            </LinearLayout>
+
+            <!-- Prawa kolumna: statusy -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStatOutForDelivery"
+                    style="@style/App.StatusButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="visible"
+                    app:icon="@drawable/out_for_delivery"
+                    android:text="@string/status_out_for_delivery" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStatCompleted"
+                    style="@style/App.StatusButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="visible"
+                    app:icon="@drawable/completed"
+                    android:text="@string/status_completed" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutOrderTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:elevation="2dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/tvDialogTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Czas realizacji zamówienia"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:paddingBottom="12dp"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <LinearLayout
+            android:id="@+id/llPresetRow1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn15min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="15 min"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn30min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="30 min"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn45min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="45 min"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llPresetRow2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn60min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="60 min"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn90min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="90 min"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llDateTimeRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone"
+            android:layout_marginTop="24dp">
+
+            <TextView
+                android:id="@+id/tvDateInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="2025-07-08"
+                android:textSize="22sp"
+                android:textColor="#4C3299"
+                android:gravity="center"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tvTimeInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="07:00"
+                android:textSize="22sp"
+                android:textColor="#222222"
+                android:gravity="center"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAcceptTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Akceptuj"
+            android:visibility="gone"
+            android:layout_marginTop="16dp"
+            style="@style/Widget.Material3.Button.IconButton.Filled"
+            app:cornerRadius="16dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutOrderCourier"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:elevation="2dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+        <TextView
+            android:id="@+id/tvCourierStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Courier:"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutOrderDetails"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="visible"
+        android:elevation="2dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/tvOrderDetailTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Order Details"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:paddingBottom="12dp"
+            android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+
+        <include
+            layout="@layout/layout_order_details_items"
+            android:id="@+id/includeOrderDetailsItems"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/scrollOrderDetails"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <include
+                layout="@layout/layout_order_details"
+                android:id="@+id/includeOrderDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "598095797761",
+    "project_id": "itsolutions-61126",
+    "storage_bucket": "itsolutions-61126.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:598095797761:android:6941a6782845d5dfd5aa00",
+        "android_client_info": {
+          "package_name": "com.itsorderkds"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "598095797761-qdspdhdckm9r8g7opsge3043o0tam8bc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7JP2h8EApMh0q2sVAGGtmNZF8yOWYjQw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "598095797761-qdspdhdckm9r8g7opsge3043o0tam8bc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

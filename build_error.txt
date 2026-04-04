@@ -1,0 +1,103 @@
+﻿
+> Configure project :app
+WARNING: The option setting 'android.defaults.buildfeatures.buildconfig=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 9.0 of the Android Gradle plugin.
+To keep using this feature, add the following to your module-level build.gradle files:
+    android.buildFeatures.buildConfig = true
+or from Android Studio, click: `Refactor` > `Migrate BuildConfig to Gradle Build Files`.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+ksp-2.0.0-1.0.21 is too old for kotlin-2.0.10. Please upgrade ksp or downgrade kotlin-gradle-plugin to 2.0.0.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:dataBindingTriggerDebug UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateSafeArgsDebug UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileDebugKotlin FAILED
+.\gradlew : e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:76:9 Unresolved reference 'Timber'.
+At line:1 char:19
++ cd "L:\SHOP APP"; .\gradlew assembleDebug 2>&1 | Out-File -FilePath " ...
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (e: file:///L:/S...rence 'Timber'.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:88:9 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:115:13 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:121:13 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:124:21 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:129:21 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:245:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:248:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:250:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:253:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:259:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:262:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:264:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:270:33 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:279:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:281:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:283:17 Unresolved reference 'Timber'.
+e: file:///L:/SHOP%20APP/app/src/main/java/com/itsorderchat/ui/product/ProductsViewModel.kt:286:17 Unresolved reference 'Timber'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s
+37 actionable tasks: 1 executed, 36 up-to-date

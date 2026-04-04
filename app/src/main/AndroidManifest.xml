@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.itsorderkds">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.MANAGE_APP_TOKENS" />
+    <uses-permission android:name="android.permission.ACTION_OPEN_DOCUMENT" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" android:required="false"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"    android:required="false"/>
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.intent.action.PACKAGE_RESTARTED" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="com.itsorderkds.C2D_MESSAGE" />
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-feature android:name="android.hardware.usb.host" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SET_ALARM" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>-->
+    <permission android:name="com.itsorderkds.permission.C2D_MESSAGE" android:protectionLevel="signature" />
+    <application
+        android:name=".ItsChat"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ITSChat">
+
+        <!-- Wsparcie dla 16 KB stron pamięci -->
+        <property
+            android:name="android.app.property.16KB_PAGE_SIZE_ENABLED"
+            android:value="true" />
+
+        <activity
+            android:name=".ui.theme.home.HomeActivity"
+            android:exported="false"
+            android:label="@string/title_activity_home" />
+<!--        <activity-->
+<!--            android:name=".ui.product.ProductActivity"-->
+<!--            android:exported="false"-->
+<!--            android:label="@string/title_product_activity" />-->
+<!--        <activity-->
+<!--            android:name=".ui.settings.log.LogsActivity"-->
+<!--            android:exported="false"-->
+<!--            android:label="@string/Logs" />-->
+        <!-- Ustawienie motywu aplikacji -->
+        <activity android:name=".LoginActivity" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.ITSChat.Launcher">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+<!--        <activity-->
+<!--            android:name=".ui.settings.SettingsActivity"-->
+<!--            android:exported="false"-->
+<!--            android:label="@string/Settings"-->
+<!--            android:parentActivityName=".ui.theme.home.HomeActivity"/>-->
+        <activity
+            android:name=".ui.settings.printer.PrinterSettingsActivity"
+            android:exported="false" />
+
+
+        <service
+            android:name=".service.SocketService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+        <service
+            android:name=".MyFirebaseMessagingService"
+            android:exported="false"
+            android:directBootAware="true">
+            <intent-filter android:priority="100">
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <service android:name=".service.OrderAlarmService" android:exported="false"
+            android:foregroundServiceType="mediaPlayback"
+            />
+
+        <receiver
+            android:name="com.google.firebase.iid.FirebaseInstanceIdReceiver"
+            android:exported="true"
+            android:permission="com.google.android.c2dm.permission.SEND">
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+
+                <category android:name="com.itsorderkds" />
+            </intent-filter>
+        </receiver>
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBnyBPctD0w_G9Qo6oIaWFn1rkGPtOcKec" />
+
+    </application>
+
+</manifest>

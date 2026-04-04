@@ -1,0 +1,583 @@
+<resources>
+    <string name="app_name">ITS Order</string>
+    <string name="hello_blank_fragment">Witaj pusty fragment</string>
+    <string name="notification_channel_order_id" content_override="true" translatable="false">wooandroid_notification_channel_order_id</string>
+    <string name="notification_channel_review_id" content_override="true" translatable="false">wooandroid_notification_channel_review_id</string>
+    <string name="notification_channel_general_id" content_override="true" translatable="false">wooandroid_notification_channel_general_id</string>
+    <string name="notification_channel_pre_login_id" content_override="true" translatable="false">wooandroid_notification_channel_pre_login_id</string>
+    <string name="order">Zamówienie</string>
+    <string name="review">Opinia</string>
+    <string name="rest">Inne</string>
+    <string name="prelogin">Logowanie</string>
+    <string name="title_activity_home">Strona główna</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">Pierwszy fragment</string>
+    <string name="second_fragment_label">Drugi fragment</string>
+    <string name="next">Dalej</string>
+    <string name="previous">Wstecz</string>
+    <string name="amit_kumar">Amit Kumar</string>
+    <string name="username">Login</string>
+    <string name="bio">Jako deweloper aplikacji Android mam pasję do tworzenia pięknych i funkcjonalnych aplikacji dla użytkowników. Piszę głównie w języku Kotlin. Skupiam się na tworzeniu atrakcyjnego wizualnie i intuicyjnego doświadczenia, które sprawia radość z używania aplikacji.</string>
+    <string name="profile">Profil</string>
+    <string name="about">O aplikacji</string>
+    <string name="user_information">Informacje o użytkowniku</string>
+    <string name="username_">Nazwa użytkownika</string>
+    <string name="amitthecoder">amitthecoder</string>
+    <string name="gender">Płeć</string>
+    <string name="male">Mężczyzna</string>
+    <string name="age">Wiek</string>
+    <string name="_21">21</string>
+    <string name="date_of_birth">Data urodzenia</string>
+    <string name="_07_02_2003">07/02/2003</string>
+    <string name="mobile">Telefon</string>
+    <string name="_91_9000000009">+91 9000000009</string>
+    <string name="email">Email</string>
+    <string name="axxxxxxa_gmail_com">axxxxxxa@gmail.com</string>
+    <string name="social_media">Media społecznościowe</string>
+    <string name="Chat">Czat</string>
+    <string name="permissions">Uprawnienia</string>
+    <string name="user_balance">Saldo</string>
+    <string name="work_hours">Godziny pracy</string>
+    <string name="TIP">Napiwek</string>
+    <string name="withdrawal">Wypłata gotówki</string>
+    <string name="payment_transfer">Przelew</string>
+    <string name="total">Suma</string>
+    <string name="social">Społeczność</string>
+    <string name="rate">Oceń</string>
+    <string name="vacation">Urlop</string>
+    <string name="holidayuse">Wykorzystane urlopy</string>
+    <string name="profile_start_work">Rozpocznij pracę</string>
+    <string name="profileActive">Aktywny</string>
+    <string name="profileAddons">Dodatki</string>
+    <string name="profileCash">Gotówka</string>
+    <string name="profileDate">Data</string>
+    <string name="profileTransfer">Przelew</string>
+    <string name="profileTotal">Suma</string>
+    <string name="profileTips">Napiwek</string>
+    <string name="profileTime">Czas</string>
+    <string name="profileStatus">Status</string>
+    <string name="profileStar">Gwiazdka</string>
+    <string name="profileSocial">Społeczność</string>
+    <string name="profileSick">Chorobowe</string>
+    <string name="profileReward">Premia</string>
+    <string name="profilePercent">Procent</string>
+    <string name="profileLunch">Obiad</string>
+    <string name="profileHoliday">Urlop</string>
+    <string name="profileExtra">Dodatkowe</string>
+    <string name="profileDescription">Opis</string>
+    <string name="profileZus">ZUS</string>
+    <string name="graphic">Grafik</string>
+    <string name="balance">Saldo</string>
+    <string name="signingOutGraphic">Wypisuję się</string>
+    <string name="Log">Log</string>
+    <string name="Balance">Saldo</string>
+    <string name="Graphic">Grafik</string>
+    <string name="Logout">Wyloguj</string>
+    <string name="Profile">Profil</string>
+    <string name="login">Login</string>
+    <string name="password">Hasło</string>
+    <string name="ListHours">Lista godzin</string>
+    <string name="GraphicModern">Nowoczesny grafik</string>
+    <string name="day_of_week_with_day">%2$d %1$s</string>
+    <string name="header_day">Dzień</string>
+    <string name="header_start">Start</string>
+    <string name="header_end">Koniec</string>
+    <string name="header_time">Czas [h]</string>
+    <string name="profilWork">Profil pracy</string>
+    <string name="firstaname">Imię</string>
+    <string name="SetGraphic">Ustaw grafik</string>
+    <string name="save">Zapisz</string>
+    <string name="firstName">Imię</string>
+    <string name="index_format">%1$d</string>
+    <string name="noData">Brak danych</string>
+    <string name="profileHolidayUseMonth">Wykorzystany urlop</string>
+    <string name="domain">Domena</string>
+    <string name="Product">Produkt</string>
+    <string name="navigation_drawer_open">Otwórz</string>
+    <string name="navigation_drawer_close">Zamknij</string>
+    <string name="Orders">Zamówienia</string>
+    <string name="status_processing">W realizacji</string>
+    <string name="status_accepted">Zaakceptowane</string>
+    <string name="status_completed">Zakończone</string>
+    <string name="status_pending">Oczekujące</string>
+    <string name="status_other">Inny</string>
+    <string name="status_out_for_delivery">W dostawie</string>
+    <string name="status_cancelled">Anulowane</string>
+    <string name="order_progress">W trakcie</string>
+    <string name="order_newOrder">Nowe</string>
+    <string name="order_completed">Zakończone</string>
+    <string-array name="months_array">
+        <item>Styczeń</item>
+        <item>Luty</item>
+        <item>Marzec</item>
+        <item>Kwiecień</item>
+        <item>Maj</item>
+        <item>Czerwiec</item>
+        <item>Lipiec</item>
+        <item>Sierpień</item>
+        <item>Wrzesień</item>
+        <item>Październik</item>
+        <item>Listopad</item>
+        <item>Grudzień</item>
+    </string-array>
+    <string name="update_success">Success</string>
+    <string name="update_failed">Błąd aktualizacji: %1$s</string>
+    <string name="Printer">Drukarka</string>
+    <string name="no_printer_selected">Nie wybrano drukarki</string>
+    <string name="subtitle_printer">Ustawienia Drukarki</string>
+    <string name="Settings">Ustawienia</string>
+    <string name="as_soon_as_possible">Jak najszybciej</string>
+    <string name="delivery_label_delivery">Dostawa</string>
+    <string name="delivery_label_pickup">Odbiór osobisty</string>
+    <string name="delivery_label_unknown">Nieznany</string>
+
+    <string name="label_date">Data</string>
+    <string name="label_client">Klient</string>
+    <string name="label_phone">Tel.</string>
+    <string name="label_payment">Płatność</string>
+    <string name="label_time">Termin</string>
+
+    <string name="line_subtotal">Kwota</string>
+    <string name="line_delivery">Dostawa</string>
+    <string name="line_discount">Zniżka</string>
+    <string name="line_additional_fee">Dodatkowe</string>
+    <string name="line_point_use">Punkty</string>
+    <string name="line_total">SUMA</string>
+
+    <string name="label_notes">Uwagi</string>
+    <string name="footer_thanks">Dziękujemy za zamówienie!</string>
+    <string name="customer_waiting">Klient oczekuje</string>
+    <string name="label_address">Address</string>
+    <string name="btn_take_course">Take the course</string>
+    <string name="btn_resign_course">Give up</string>
+    <string name="tab_route">Kolejka</string>
+    <string name="Logout_courier">Off day</string>
+    <string name="logout">Logout</string>
+    <string name="start_shift">Rozpocznij</string>
+    <string name="end_shift">Zakończ</string>
+    <string name="return_to_restaurant">Return</string>
+    <string name="confirm_pickup_count">Zatwierdź (%d)</string>
+    <string name="fab_plan">Trasa</string>
+    <!-- res/values/strings.xml -->
+    <string name="route_return_to_restaurant">Powrót do restauracji</string>
+
+    <!-- pola wiersza -->
+    <string name="route_order_number">Zamówienie: %1$s</string>
+    <string name="route_address">Adres: %1$s</string>
+    <string name="route_distance">Dystans: %1$.2f km</string>
+    <string name="route_status">Status: %1$s</string>
+
+    <!-- czasy -->
+    <string name="route_eta">Planowa dostawa: %1$s</string>
+    <string name="route_start">Start: %1$s</string>
+    <string name="route_planned">Planowany: %1$s</string>
+    <string name="asap">Jak Najszybciej: %1$s</string>
+    <string name="asap_text">Jak Najszybciej</string>
+    <!-- opóźnienia -->
+    <string name="route_delay_late">Opóźnienie: %1$d min</string>
+    <string name="route_delay_early">Wcześniej: %1$d min</string>
+    <string name="route_delay_ontime">Punktualnie</string>
+    <string name="choseCar">Choose Car</string>
+    <string name="in_delivery_with_count">W dostawie</string>
+    <string name="delivered">Dostarczone</string>
+    <string name="accepted">Zatwierdź</string>
+    <string name="shift_not_started_label">Zmiana nie rozpoczęta</string>
+    <string name="start_shift_button">Rozpocznij</string>
+    <string name="tab_accepted_orders">Accepted</string>
+    <string name="settings_profile_title">Profile title</string>
+    <string name="settings_notifications_title">Noti</string>
+    <string name="navigate_up">Navigate up</string>
+    <string name="Logs">Logs</string>
+    <string name="printer_title">Printer Title</string>
+    <string name="logs_title">Log title</string>
+    <string name="title_product_activity">Product Titile</string>
+    <string name="tab_map">Map</string>
+    <string name="new_route_notification_title">Trasa zaktualizowana</string>
+    <string name="new_route_notification_message">Otrzymano nową trasę z %d przystankami.</string>
+    <string name="background_content_description">BG</string>
+    <string name="in_delivery">W dostawie</string>
+    <string name="na">N/A</string>
+    <string name="dash">-</string>
+
+    <!-- dostępność / opisy -->
+    <string name="source_cd">Źródło: %1$s</string>
+    <string name="delivery_type_cd">Typ dostawy: %1$s</string>
+    <string name="scheduled_order">Zamówienie zaplanowane</string>
+    <string name="preorder_tag">PREORDER</string>
+
+    <!-- trasa / czasy -->
+    <string name="asap_tag">ASAP</string>
+    <string name="start_time">Start %1$s</string>
+    <string name="eta_time">ETA %1$s</string>
+    <string name="distance_km">%.1f km</string>
+
+    <!-- adres/telefon -->
+    <string name="address_missing">Brak adresu</string>
+    <string name="phone_missing">Brak numeru</string>
+
+    <!-- payments / amounts -->
+    <string name="payment_cash">Gotówka</string>
+    <string name="payment_card">Karta</string>
+    <string name="payment_online">Online</string>
+    <string name="payment_missing">Brak płatności</string>
+    <string name="money_pln">%1$.2f %2$s</string>
+    <string name="delivery_time_short">%1$s</string>
+    <string name="restaurant_open">Otwarte</string>
+    <string name="restaurant_paused">Wstrzymane</string>
+    <string name="restaurant_closed">Zamknięte</string>
+    <string name="restaurant_unknow">-</string>
+    <string name="fgs_needs_foreground_title">Wymagane otwarcie aplikacji</string>
+    <string name="fgs_needs_foreground_message">Aby kontynuować nasłuch zamówień w tle, otwórz aplikację. To zresetuje limit działania w tle.</string>
+
+    <string name="fgs_timeout_title">Limit działania w tle wyczerpany</string>
+    <string name="fgs_timeout_message">Android zatrzymał usługę po przekroczeniu limitu dla działania w tle. Otwórz aplikację, aby wznowić stały nasłuch zamówień.</string>
+
+    <string name="action_open_app">Otwórz teraz</string>
+    <string name="permissions_granted">Uprawnienia przyznane</string>
+    <string name="permissions_denied">Odmówiono uprawnień</string>
+    <string name="no_bluetooth_permission">Brak uprawnień Bluetooth</string>
+    <string name="no_paired_bt_printers">Brak sparowanych drukarek BT</string>
+    <string name="no_printer_configured">Brak skonfigurowanej drukarki</string>
+    <string name="select_bluetooth_printer">Wybierz drukarkę Bluetooth</string>
+    <string name="printer_status">Status drukarki</string>
+    <string name="selected_printer">Wybrana drukarka</string>
+    <string name="actions">Akcje</string>
+    <string name="print_test_page">Drukuj stronę testową</string>
+
+    <string name="automation">Automatyzacja</string>
+    <string name="automatic_printing">Drukowanie automatyczne</string>
+    <string name="auto_print_description">Drukuj nowe zamówienia automatycznie</string>
+
+    <string name="settings_notifications_subtitle">Konfigurowanie dzwięku</string>
+    <string name="printers_manage_title">Zarządzanie Drukarkami</string>
+    <string name="printers_manage_subtitle">Dodaj, edytuj i zarządzaj wieloma drukarkami</string>
+    <string name="automatic_printing_accepted">Drukowanie automatyczne (zaakceptowane)</string>
+    <string name="auto_print_description_accepted">Drukuj na drukarce kuchennej po zaakceptowaniu zamówienia</string>
+    <string name="kitchen_printer_settings">Ustawienia drukarki kuchennej</string>
+    <string name="enable_kitchen_printer">Włącz drukarkę kuchenną</string>
+    <string name="auto_cut_kitchen">Automatyczne cięcie (kuchnia)</string>
+    <string name="has_cutter">Posiada nóż do cięcia</string>
+
+    <string name="printer_icon_desc">Ikona drukarki</string>
+    <string name="search_icon_desc">Ikona wyszukiwania</string>
+    <string name="print_icon_desc">Ikona drukowania</string>
+    <string name="auto_print_icon_desc">Ikona drukowania automatycznego</string>
+    <string name="auto_print_icon_desc_accepted">Ikona drukowania automatycznego (zaakceptowane)</string>
+    <string name="select">Wybierz</string>
+    <string name="settings_printer_title">Ustawienia wydruku</string>
+    <string name="settings_printer_subtitle">Skonfiguruj drukarkę i styl wydruków</string>
+    <string name="settings_logs_title">Logi Aplikacji</string>
+    <string name="settings_logs_subtitle">Podgląd logów aplikacji</string>
+    <string name="settings_open_hours_title">Godziny otwarcia</string>
+    <string name="settings_open_hours_subtitle">Zarządzaj godzinami pracy i przerwami</string>
+    <string name="order_alarm_channel_name">New order alerts</string>
+    <string name="order_alarm_channel_desc">Urgent notifications about new orders</string>
+    <string name="common_back">Wróć</string>
+
+    <string name="ble_not_supported">BLE not supported</string>
+    <string name="ble_printer_not_supported">BLE printers are not supported. Please use a Bluetooth Classic (SPP) printer.</string>
+
+    <string name="common_menu">Menu</string>
+    <string name="common_save">Zapisz</string>
+    <string name="common_saving">Zapisywanie…</string>
+    <string name="common_filter">Filtruj</string>
+    <string name="common_confirm">Zatwierdź</string>
+    <string name="unknown_error_occurred">Wystąpił nieznany błąd</string>
+    <string name="guest">Gość</string>
+    <string name="no_address">Brak adresu</string>
+    <string name="confirmation">Potwierdzenie</string>
+
+    <string name="settings_title">Ustawienia</string>
+
+
+    <string name="product_details_title">Szczegóły Produktu</string>
+    <string name="selected_orders">Zaznaczone zamówienia:</string>
+    <string name="order_number_list_item">• Zamówienie: %s</string>
+    <string name="order_address_list_item">  Adres: %s</string>
+    <string name="plan_route">Zaplanuj trasę</string>
+    <string name="phone_app_not_found">Nie znaleziono aplikacji telefonu.</string>
+    <string name="call">Zadzwoń</string>
+
+    <plurals name="confirm_status_change_in_delivery">
+        <item quantity="one">Czy na pewno chcesz zmienić status %d zamówienia na \"W dostawie\"?</item>
+        <item quantity="few">Czy na pewno chcesz zmienić status %d zamówień na \"W dostawie\"?</item>
+        <item quantity="many">Czy na pewno chcesz zmienić status %d zamówień na \"W dostawie\"?</item>
+        <item quantity="other">Czy na pewno chcesz zmienić status %d zamówienia na \"W dostawie\"?</item>
+    </plurals>
+    <plurals name="confirm_status_change_delivered">
+        <item quantity="one">Czy na pewno chcesz oznaczyć %d zamówienie jako \"Dostarczone\"?</item>
+        <item quantity="few">Czy na pewno chcesz oznaczyć %d zamówienia jako \"Dostarczone\"?</item>
+        <item quantity="many">Czy na pewno chcesz oznaczyć %d zamówień jako \"Dostarczone\"?</item>
+        <item quantity="other">Czy na pewno chcesz oznaczyć %d zamówienia jako \"Dostarczone\"?</item>
+    </plurals>
+    <string name="order_details_and_products">Szczegóły i produkty</string>
+    <string name="customer">Klient</string>
+    <string name="phone">Telefon</string>
+    <string name="address">Adres</string>
+    <string name="personal_pickup">Odbiór osobisty</string>
+    <string name="courier">Kurier</string>
+
+    <string name="price_format_currency">%.2f %2$s</string>
+    <string name="price_format_currency_minus">-%.2f %2$s</string>
+    <string name="add_minutes_format">+%d min</string>
+
+    <string name="action_take_order">Podejmij zlecenie</string>
+    <string name="action_resign">Zrezygnuj</string>
+    <string name="action_out_for_delivery">W drodze</string>
+    <string name="action_delivered">Dostarczono</string>
+    <string name="action_completed">Zrealizowano</string>
+    <string name="action_print">Drukuj</string>
+    <string name="action_confirm_time">Zatwierdź czas</string>
+    <string name="order_details">Szczegóły zamówienia</string>
+    <string name="common_close">Zamknij</string>
+    <string name="order_alarm_title">Nowe zamówienie!</string>
+    <string name="order_alarm_body">Kliknij, by zobaczyć szczegóły</string>
+    <string name="order_alarm_mute">Wycisz</string>
+    <string name="order_alarm_settings">Ustawienia dźwięku</string>
+    <string name="order_alarm_boot_title">Uruchamianie alarmu…</string>
+    <string name="common_add">Dodaj</string>
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Anuluj</string>
+    <string name="common_remove">Usuń</string>
+    <string name="common_saved">Zapisano.</string>
+    <string name="common_dash">-</string>
+    <string name="unknown_error">Wystąpił nieznany błąd</string>
+
+    <!-- Notification sound names -->
+    <string name="sound_name_default">Domyślny (iPhone)</string>
+    <string name="sound_name_soft_chime">Miękki dzwonek</string>
+    <string name="sound_name_classic_bell">Klasyczny dzwon</string>
+
+    <!-- Notification types -->
+    <string name="notification_type_order_alarm">Nowe zamówienie</string>
+    <string name="notification_type_route_updated">Aktualizacja trasy</string>
+    <string name="notification_type_general">Ogólne</string>
+
+    <string name="store_status_title">Status sklepu</string>
+    <string name="accept_orders_by_schedule">Przyjmuj zamówienia wg harmonogramu</string>
+    <string name="store_can_accept_by_schedule">Sklep może przyjmować wg harmonogramu</string>
+    <string name="store_paused_by_global_switch">Sklep wstrzymany globalnym przełącznikiem</string>
+
+    <string name="configuration">Konfiguracja</string>
+    <string name="timezone_label">Strefa czasowa (np. Europe/Warsaw)</string>
+
+    <string name="weekly_schedule">Harmonogram tygodniowy</string>
+    <string name="no_ranges_add_first">Brak zakresów – dodaj pierwszy.</string>
+    <string name="add_time_range">Dodaj zakres</string>
+
+    <string name="exceptions_dates">Wyjątki (daty)</string>
+    <string name="date_yyyy_mm_dd">Data (YYYY-MM-DD)</string>
+    <string name="closed_all_day">Zamknięte cały dzień</string>
+    <string name="remove_exception">Usuń wyjątek</string>
+
+    <string name="from_hh_mm">Od (HH:mm)</string>
+    <string name="to_hh_mm">Do (HH:mm)</string>
+
+    <string name="day_monday">Poniedziałek</string>
+    <string name="day_tuesday">Wtorek</string>
+    <string name="day_wednesday">Środa</string>
+    <string name="day_thursday">Czwartek</string>
+    <string name="day_friday">Piątek</string>
+    <string name="day_saturday">Sobota</string>
+    <string name="day_sunday">Niedziela</string>
+
+    <!-- Main Settings Screen -->
+    <string name="settings_main_title">Główne ustawienia</string>
+    <string name="settings_main_subtitle">Podstawowe ustawienia aplikacji i terminala</string>
+    <string name="settings_main_config_title">Konfiguracja Terminala</string>
+    <string name="settings_main_kiosk_mode_title">Tryb Kiosk</string>
+    <string name="settings_main_kiosk_mode_subtitle">Zablokuj aplikację na terminalu restauracji</string>
+    <string name="settings_main_auto_restart_title">Auto-restart</string>
+    <string name="settings_main_auto_restart_subtitle">Automatycznie uruchom aplikację ponownie po zamknięciu</string>
+    <string name="settings_main_task_reopen_title">Automatyczne przywracanie</string>
+    <string name="settings_main_task_reopen_subtitle">Automatycznie przywróć aplikację po zminimalizowaniu do tła</string>
+    <string name="settings_main_other_section">Inne</string>
+    <string name="settings_main_about_title">O aplikacji</string>
+    <string name="settings_main_about_subtitle">Wersja i informacje</string>
+
+    <string name="set_time_range">set_time_range</string>
+    <string name="order_count_header">%d zam.</string>
+    <string name="collapse">Pokaż</string>
+    <string name="expand">Ukryj</string>
+    <string name="total_summary">Podsumowanie</string>
+    <string name="summary_deliveries">Dostawy: %d</string>
+    <string name="summary_pickups">Odbiory: %d</string>
+    <string name="order_awaiting_payment_info">Oczekuje na płatność. Brak dostępnych akcji.</string>
+    <string name="pending_payment">Oczekujące na płatność</string>
+    <string name="orders_to_prepare">Do zrobienia</string>
+    <string name="action_send_to_stava">Stava</string>
+    <string name="action_send_to_stuart">Stuart</string>
+    <string name="summary_subtotal">Produkty</string>
+    <string name="summary_delivery_fee">Dostawa</string>
+    <string name="summary_service_fee">Opłaty</string>
+    <string name="summary_total">Suma</string>
+    <string name="action_group_status">Zmień status zamówienia</string>
+    <string name="action_group_delivery">Dostawa zewnętrzna</string>
+    <string name="orders_accepted_to_prepare">Zaakceptowane (do przygotowania)</string>
+    <string name="restaurant_status_title">Status restauracji</string>
+    <string name="status_action_open_store">Otwórz sklep</string>
+    <string name="status_action_open_store_desc">Przyjmuj zamówienia natychmiast</string>
+    <string name="status_action_close_store">Zamknij sklep</string>
+    <string name="status_action_close_store_desc">Ręcznie zamknij przyjmowanie zamówień</string>
+    <string name="status_action_pause">Wstrzymaj tymczasowo</string>
+    <string name="status_action_pause_desc">Ustaw automatyczny czas wznowienia</string>
+    <string name="status_action_clear_pause">Wznów teraz</string>
+    <string name="status_action_clear_pause_desc">Usuń pauzę i wznów zamówienia</string>
+    <string name="status_action_edit_hours">Edytuj godziny otwarcia</string>
+    <string name="status_action_edit_hours_desc">Skonfiguruj harmonogram tygodniowy</string>
+    <string name="status_action_disabled_products">Wyłączone produkty</string>
+    <string name="status_action_disabled_products_desc">Zarządzaj dostępnością produktów</string>
+
+    <!-- Open/Close Store Dialog -->
+    <string name="open_all_portals">Otwórz WSZYSTKIE portale</string>
+    <string name="close_all_portals">Zamknij WSZYSTKIE portale</string>
+    <string name="open_selected_portals">Otwórz: %1$s</string>
+    <string name="close_selected_portals">Zamknij: %1$s</string>
+    <string name="select_portals_to_change">Wybierz portale do zmiany</string>
+    <string name="selected">Wybrano</string>
+    <string name="products_title">Produkty</string>
+    <string name="action_send_to_wolt">Wolt Drive</string>
+    <string name="notification_external_delivery_title">Zamówienie wysłane</string>
+    <string name="notification_external_delivery_message_generic">
+    Zamówienie #%1$s zostało pomyślnie wysłane do platformy dostawy
+</string>
+    <string name="notification_external_delivery_message_with_status">
+    Zamówienie #%1$s zostało pomyślnie wysłane. Status: %2$s
+</string>
+
+    <!-- Teksty statusów DeliveryStatusEnum -->
+    <string name="delivery_status_failed">Dostawa nie powiodła się</string>
+    <string name="notification_external_delivery_order_number_unknown">to zamówienie</string>
+
+    <!-- Preparation Time Dialog -->
+    <string name="preparation_time_title">Czas przygotowania</string>
+    <string name="preparation_time_message">Wybierz czas przygotowania zamówienia dla %s</string>
+    <string name="preparation_time_ready">Zamówienie będzie gotowe za: %d minut</string>
+    <string name="preparation_time_min">%d min</string>
+    <string name="btn_send">Wyślij</string>
+    <string name="btn_cancel">Anuluj</string>
+    <string name="set_delivery_time">Ustaw czas dostawy</string>
+    <string name="delivery_time">Czas dostawy</string>
+    <string name="select_date">Wybierz datę</string>
+    <string name="today">Dzisiaj</string>
+    <string name="hour">Godzina</string>
+    <string name="minutes">Minuty</string>
+    <string name="date">Data</string>
+    <string name="back_date_selection">Wróć</string>
+    <string name="predefined_times_label">Czasy predefiniowane</string>
+
+    <!-- External Delivery Status -->
+    <string name="delivery_status_requested">Zlecono</string>
+    <string name="delivery_status_accepted">Przyjęte</string>
+    <string name="delivery_status_in_transit">W drodze</string>
+    <string name="delivery_status_delivered">Dostarczono</string>
+    <string name="delivery_status_cancelled">Anulowane</string>
+    <string name="delivery_status_rejected">Odrzucone</string>
+    <string name="courier_already_assigned">Kurier już przydzielony</string>
+    <string name="btn_cancel_external_courier">Anuluj kuriera zewnętrznego</string>
+    <string name="unknown_courier">Nieznany kurier</string>
+    <string name="select_printer_encoding">wybierz</string>
+    <string name="printer_hard_raw_test">RAW TEST</string>
+
+    <string name="printer_encoding_settings">Encoding &amp; code page</string>
+    <string name="select_encoding">Select encoding</string>
+    <string name="choose_charset">Choose charset</string>
+    <string name="choose_codepage">Choose code page</string>
+    <string name="codepage_no_command">No ESC t command</string>
+    <string name="current_encoding">Current encoding: %1$s</string>
+    <string name="current_codepage">Current code page: %1$s</string>
+
+    <string name="detect_printer_encoding">Detect printer encoding</string>
+    <string name="printer_encoding_detected">Detected printer encoding: %1$s</string>
+    <string name="printer_encoding_not_detected">Printer encoding could not be detected</string>
+    <string name="printer_test_title">Printer test results</string>
+    <string name="printer_test_detecting">Detecting printer encoding...</string>
+    <string name="printer_quick_autofix">Quick auto-fix (CP1250/CP852)</string>
+    <string name="manual_encoding">Manual encoding (e.g. CP1250)</string>
+    <string name="manual_codepage">Manual codepage (numeric)</string>
+    <string name="invalid_codepage">Invalid codepage</string>
+    <string name="printer_test_success">Printer test successful</string>
+    <string name="printer_test_failed">Printer test failed</string>
+    <string name="apply_manual_test">Apply &amp; Test</string>
+
+    <!-- Printer profile strings -->
+    <string name="select_printer_profile">Select printer profile</string>
+    <string name="current_profile_none">No profile</string>
+    <string name="current_profile">Profile: %1$s</string>
+    <string name="manual_printer_mapping">Manual printer mapping</string>
+    <string name="printer_mapping_saved_for_device">Printer mapping saved for device</string>
+    <string name="printer_mapping_saved_global">Printer mapping saved (global)</string>
+    <string name="save_printer_mapping">Save mapping</string>
+    <string name="profile_none">None</string>
+    <!-- Kitchen Printer (PL) -->
+
+    <string name="closed">Zamkniete</string>
+    <string name="open_time_from">Od</string>
+    <string name="open_time_to">Do</string>
+    <string name="select_time">Select Time</string>
+    <!-- Print Settings Screen -->
+    <string name="settings_print_title">Ustawienia drukowania</string>
+    <string name="settings_print_auto_print_section">Automatyczne drukowanie</string>
+    <string name="settings_print_auto_print_new_order">Drukuj przy nowym zamówieniu</string>
+    <string name="settings_print_auto_print_new_order_desc">Automatycznie drukuje paragon gdy przyjdzie nowe zamówienie</string>
+    <string name="settings_print_after_accept_section">Drukowanie po zaakceptowaniu</string>
+    <string name="settings_print_auto_print_accepted">Drukuj po zaakceptowaniu</string>
+    <string name="settings_print_auto_print_accepted_desc">Automatycznie drukuje paragon po zaakceptowaniu zamĂłwienia</string>
+    <string name="settings_print_auto_print_dine_in">Auto-drukuj zamówienia na miejscu</string>
+    <string name="settings_print_auto_print_dine_in_desc">Automatycznie drukuje zamówienia Dine-In i Room Service (omija akceptację)</string>
+    <string name="settings_print_dine_in_printer">Drukarka dla zamówień na miejscu</string>
+    <string name="settings_print_dine_in_printer_main">Drukarka główna</string>
+    <string name="settings_print_dine_in_printer_kitchen">Drukarka kuchenna</string>
+    <string name="settings_print_kitchen_section">Drukowanie na kuchni</string>
+    <string name="settings_print_auto_print_kitchen">Drukuj na drukarce kuchennej</string>
+    <string name="settings_print_auto_print_kitchen_desc">WysyĹ‚a wydruk rĂłwnieĹĽ na drukark™ kuchenn… (jeĹ›li skonfigurowana)</string>
+    <string name="settings_print_no_kitchen_printer">Brak drukarki kuchennej</string>
+    <string name="settings_print_no_kitchen_printer_desc">Skonfiguruj drukark™ kuchenn… w zarz…dzaniu drukarkami, aby mĂłc wysyĹ‚a‡ wydruki do kuchni</string>
+
+    <!-- Open Hours Screen -->
+
+
+    <!-- Days of week -->
+
+    <!-- Error messages -->
+    <string name="error_save_failed">Błąd przy zapisie: %1$s</string>
+    <string name="error_generic">Błąd: %1$s</string>
+    <string name="error_occurred">Wystąpił błąd</string>
+    <string name="error_fetch_categories">Nie udało się pobrać kategorii.</string>
+    <string name="error_fetch_products">Nie udało się pobrać produktów.</string>
+    <string name="try_again">Spróbuj ponownie</string>
+
+    <!-- Categories -->
+    <string name="no_categories">Brak kategorii</string>
+    <string name="no_categories_subtitle">Brak dostępnych kategorii</string>
+    <string name="products_count">%1$d produktów</string>
+    <string name="open_category">Otwórz kategorię</string>
+
+    <!-- Products -->
+    <string name="no_products">Brak produktów</string>
+    <string name="no_products_in_category">Brak produktów w %1$s</string>
+
+    <string name="socket_connected">Connected</string>
+    <string name="socket_disconnected">Połączenie z serwerem przerwane</string>
+    <string name="delivery_label_dine_in">Na miejscu</string>
+
+    <!-- Zakładki dolnej belki -->
+    <string name="tab_dine_in">Na miejscu</string>
+
+    <!-- Permissions Settings -->
+    <string name="settings_permissions_title">Uprawnienia</string>
+    <string name="settings_permissions_subtitle">Zarządzaj uprawnieniami aplikacji</string>
+    <string name="permission_notifications_title">Powiadomienia</string>
+    <string name="permission_notifications_desc">Zezwól na wyświetlanie powiadomień o nowych zamówieniach</string>
+    <string name="permission_location_title">Lokalizacja</string>
+    <string name="permission_location_desc">Wymagana do funkcji dostawy i map</string>
+    <string name="permission_bluetooth_title">Urządzenia w pobliżu (Bluetooth)</string>
+    <string name="permission_bluetooth_desc">Wymagana do łączenia z drukarkami Bluetooth</string>
+    <string name="permission_granted">Przyznane</string>
+    <string name="permission_denied">Odmówione</string>
+    <string name="permission_open_settings">Otwórz ustawienia</string>
+    <string name="permission_request">Przyznaj uprawnienie</string>
+    <string name="summary_total_discount">Suma zniźek</string>
+    <string name="summary_total_basket">Suma koszyka</string>
+
+</resources>

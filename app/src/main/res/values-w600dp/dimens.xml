@@ -1,0 +1,31 @@
+<resources>
+      <dimen name="fab_margin">48dp</dimen>
+    <dimen name="navigation_drawer_width">40%</dimen>
+
+    <dimen name="spacing_xs">4dp</dimen>
+    <dimen name="spacing_sm">8dp</dimen>
+    <dimen name="spacing_md">16dp</dimen>
+    <dimen name="spacing_lg">24dp</dimen>
+    <dimen name="spacing_xl">32dp</dimen>
+
+    <!-- Promień zaokrąglenia kart i chipów -->
+    <dimen name="corner_radius_small">4dp</dimen>
+    <dimen name="corner_radius_default">8dp</dimen>
+    <dimen name="corner_radius_large">16dp</dimen>
+
+    <!-- Grubość obramowań -->
+    <dimen name="stroke_width_thin">1dp</dimen>
+    <dimen name="stroke_width_medium">2dp</dimen>
+
+    <!-- Rozmiary ikon -->
+    <dimen name="icon_size_small">16dp</dimen>
+    <dimen name="icon_size_default">24dp</dimen>
+    <dimen name="icon_size_large">32dp</dimen>
+
+    <!-- Rozmiary tekstu -->
+    <dimen name="text_size_caption">12sp</dimen>
+    <dimen name="text_size_body">14sp</dimen>
+    <dimen name="text_size_subtitle">16sp</dimen>
+    <dimen name="text_size_title">20sp</dimen>
+    <dimen name="text_size_headline">24sp</dimen>
+</resources>

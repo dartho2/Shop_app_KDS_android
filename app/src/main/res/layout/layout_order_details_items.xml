@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/orderDetails"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="12dp">
+
+    <!-- Lewa kolumna: Informacje o zamówieniu -->
+    <LinearLayout
+        android:id="@+id/layoutOrderInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/layoutCustomerInfo"
+        app:layout_constraintWidth_percent="0.5"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/tvOrderNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:text="Zamówienie #12345" />
+
+        <TextView
+            android:id="@+id/tvOrderStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#4C3299"
+            android:text="Status: oczekujące" />
+
+        <TextView
+            android:id="@+id/tvOrderDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Utworzone: 2024-07-08 13:45" />
+
+        <TextView
+            android:id="@+id/tvOrderDateDelivery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dostawa na: 2024-07-08 14:30" />
+
+    </LinearLayout>
+
+    <!-- Prawa kolumna: Informacje o kliencie -->
+    <LinearLayout
+        android:id="@+id/layoutCustomerInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/layoutOrderInfo"
+        app:layout_constraintWidth_percent="0.5"
+        android:paddingStart="8dp">
+
+        <TextView
+            android:id="@+id/tvConsumerName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Jan Kowalski"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+        <TextView
+            android:id="@+id/tvConsumerPhone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+48 111 111 111"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <!-- Blok adresu, można ukryć jeśli pickup -->
+        <TextView
+            android:id="@+id/tvDeliveryAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ul. Testowa 123/4"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/tvDeliveryCoords"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kordynaty: 52.2297, 21.0122"
+            android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/tvDeliveryAddressCity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Adres: Kraków" />
+            <TextView
+                android:id="@+id/tvDeliveryAddressStreet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Adres: ul. Testowa 123/4" />
+
+
+        <!-- Możesz dodać telefon/email, itd. -->
+    </LinearLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

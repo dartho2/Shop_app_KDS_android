@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:id="@+id/layoutRoad"
+    android:layout_height="wrap_content">
+
+    <View
+        android:id="@+id/timeline_line_top"
+        android:layout_width="2dp"
+        android:layout_height="0dp"
+        android:background="@color/material_grey_300"
+        app:layout_constraintBottom_toTopOf="@id/timeline_marker"
+        app:layout_constraintEnd_toEndOf="@id/timeline_marker"
+        app:layout_constraintStart_toStartOf="@id/timeline_marker"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/timeline_line_bottom"
+        android:layout_width="2dp"
+        android:layout_height="0dp"
+        android:background="@color/material_grey_300"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/timeline_marker"
+        app:layout_constraintStart_toStartOf="@id/timeline_marker"
+        app:layout_constraintTop_toBottomOf="@id/timeline_marker" />
+
+    <ImageView
+        android:id="@+id/timeline_marker"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:srcCompat="@drawable/ic_timeline_marker" />
+    <ImageView
+        android:id="@+id/selection_checkmark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="2dp"
+        android:visibility="gone"
+        app:srcCompat="@drawable/ic_timeline_marker"
+        app:tint="?attr/colorPrimary"
+        app:layout_constraintTop_toTopOf="@id/timeline_marker"
+        app:layout_constraintBottom_toBottomOf="@id/timeline_marker"
+        app:layout_constraintStart_toStartOf="@id/timeline_marker"
+        app:layout_constraintEnd_toEndOf="@id/timeline_marker"
+        tools:visibility="visible" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardOrder"
+        style="@style/ITS_MaterialCardView_light"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/timeline_marker"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cardOrderContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/textViewOrderNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:gravity="center"
+                tools:text="KR-789" />
+
+            <TextView
+                android:id="@+id/textViewAddress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/textViewDistance"
+                app:layout_constraintTop_toBottomOf="@id/textViewOrderNumber"
+                tools:text="ul. Długa 123, Kraków, Polska, 31-444, 3 piętro, domofon 12" />
+
+            <TextView
+                android:id="@+id/textViewEta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/textViewAddress"
+                tools:text="ETA: 10:30" />
+
+            <TextView
+                android:id="@+id/textPlannedTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/textViewEta"
+                tools:text="Planned time: 10:30" />
+
+            <TextView
+                android:id="@+id/textEstimatedStartTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/textPlannedTime"
+                tools:text="Estimated: 10" />
+
+            <TextView
+                android:id="@+id/textDelayMinutes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/textViewOrderNumber"
+                tools:text="10" />
+
+            <TextView
+                android:id="@+id/textViewDistance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/textDelayMinutes"
+                tools:text="10" />
+
+            <TextView
+                android:id="@+id/textViewStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/textViewDistance"
+                app:layout_constraintBottom_toBottomOf="parent"
+                tools:text="10" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

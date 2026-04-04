@@ -1,0 +1,251 @@
+package com.itsorderchat.ui.loading
+
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.itsorderchat.R
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+
+@Composable
+fun AppLoadingScreen(
+    modifier: Modifier = Modifier,
+    title: String = "Ładowanie danych",
+    subtitle: String = "Proszę czekać…",
+//    @DrawableRes backgroundResId: Int = R.drawable.splash,
+    @DrawableRes logoResId: Int = R.drawable.splash,
+    logoSize: Dp = 96.dp,
+    ringSize: Dp = 128.dp,
+//    dimBackground: Float = 0.18f
+) {
+    val infinite = rememberInfiniteTransition(label = "loading")
+
+    // Logo pulse
+    val scale by infinite.animateFloat(
+        initialValue = 0.96f, targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logo-scale"
+    )
+    // Halo rotation
+    val rotation by infinite.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ring-rotation"
+    )
+    // Dots alpha
+    val dotsAlpha by infinite.animateFloat(
+        initialValue = 0.35f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dots-alpha"
+    )
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        // Background (bez rozciągania — wypełnia ekran z przycięciem)
+//        Image(
+//            painter = painterResource(id = backgroundResId),
+//            contentDescription = null,
+//            modifier = Modifier.fillMaxSize(),
+//            contentScale = ContentScale.Fit
+//        )
+//        // Dim overlay
+//        if (dimBackground > 0f) {
+//            Box(
+//                Modifier
+//                    .fillMaxSize()
+//                    .background(Color.Black.copy(alpha = dimBackground))
+//            )
+//        }
+
+        // Center content
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(contentAlignment = Alignment.Center) {
+                LoadingRing(
+                    size = ringSize,
+                    rotation = rotation,
+                    colorActive = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                    colorTrack = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                )
+                Image(
+                    painter = painterResource(id = logoResId),
+                    contentDescription = "Logo aplikacji",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(logoSize)
+                        .scale(scale)
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = buildDotsLine(subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.alpha(dotsAlpha)
+            )
+        }
+
+        // 🔻 Striped loading bar na dole ekranu
+//        StripedLoadingBar(
+//            modifier = Modifier
+//                .align(Alignment.BottomCenter)
+//                .fillMaxWidth()
+//                .padding(horizontal = 24.dp, vertical = 24.dp),
+//            height = 10.dp,
+//            stripeWidth = 28.dp,
+//            angleDegrees = 45f,
+//            speedMillisPerStripe = 700,
+//            trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+//            stripeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
+//            cornerRadius = 6.dp
+//        )
+    }
+}
+
+@Composable
+private fun LoadingRing(
+    size: Dp,
+    rotation: Float,
+    colorActive: Color,
+    colorTrack: Color,
+    strokeWidth: Dp = 6.dp,
+    sweepAngleActive: Float = 270f
+) {
+    val stroke = with(LocalDensity.current) { strokeWidth.toPx() }
+    val ringSizePx = with(LocalDensity.current) { size.toPx() }
+
+    Canvas(modifier = Modifier.size(size)) {
+        drawArc(
+            color = colorTrack,
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+            size = Size(ringSizePx, ringSizePx)
+        )
+        rotate(rotation) {
+            drawArc(
+                color = colorActive,
+                startAngle = -90f,
+                sweepAngle = sweepAngleActive,
+                useCenter = false,
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+                size = Size(ringSizePx, ringSizePx)
+            )
+        }
+    }
+}
+
+/**
+ * Animowany pasek z ukośnymi „kreskami”.
+ */
+@Composable
+private fun StripedLoadingBar(
+    modifier: Modifier,
+    height: Dp = 8.dp,
+    stripeWidth: Dp = 24.dp,
+    angleDegrees: Float = 45f,
+    speedMillisPerStripe: Int = 800,
+    trackColor: Color = Color.Black.copy(alpha = 0.12f),
+    stripeColor: Color = Color.White.copy(alpha = 0.60f),
+    cornerRadius: Dp = 4.dp
+) {
+    val density = LocalDensity.current
+    val stripeWidthPx = with(density) { stripeWidth.toPx() }
+    val cornerPx = with(density) { cornerRadius.toPx() }
+
+    // animowany przesuw wzoru
+    val shift by rememberInfiniteTransition(label = "bar-shift").animateFloat(
+        initialValue = 0f,
+        targetValue = stripeWidthPx * 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(speedMillisPerStripe, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shift"
+    )
+
+    Canvas(
+        modifier = modifier
+            .height(height)
+    ) {
+        // Tło paska
+        drawRoundRect(
+            color = trackColor,
+            size = size,
+            cornerRadius = CornerRadius(cornerPx, cornerPx)
+        )
+
+        // Rysowanie ukośnych pasków
+        val diag = hypot(size.width, size.height)
+        val step = stripeWidthPx * 2f
+
+        withTransform({
+            // obracamy całą warstwę, żeby paski były ukośnie
+            rotate(
+                degrees = angleDegrees,
+                pivot = Offset(size.width / 2f, size.height / 2f)
+            )
+            // przenosimy tak, aby pasy startowały poza obszarem
+            translate(left = -diag / 2f + shift, top = 0f)
+        }) {
+            var x = -diag
+            while (x < size.width + diag) {
+                drawRoundRect(
+                    color = stripeColor,
+                    topLeft = Offset(x, -size.height), // wyższy, żeby przy obrocie nie było dziur
+                    size = Size(stripeWidthPx, size.height * 3f),
+                    cornerRadius = CornerRadius(0f, 0f)
+                )
+                x += step
+            }
+        }
+    }
+}
+
+private fun buildDotsLine(base: String): String =
+    if (base.trimEnd().endsWith("…")) base else "$base…"
