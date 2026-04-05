@@ -5,9 +5,6 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -50,12 +47,13 @@ class SocketService : Service() {
     @Inject
     lateinit var socketStaffEventsHandler: SocketStaffEventsHandler
     @Inject
+    lateinit var kdsSocketEventsHandler: KdsSocketEventsHandler
+    @Inject
     lateinit var authApi: AuthApi
 
     // Scope serwisu
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var wsAlarmJob: Job? = null
-    private var alarmPlayer: MediaPlayer? = null
 
     // Flagi stanu FGS/UI
     @Volatile
@@ -118,19 +116,17 @@ class SocketService : Service() {
         maybeElevateAtStartup()
     }
 
+    // ─── WS disconnect alarm (tylko powiadomienie, bez dźwięku) ────────────
+
     private fun scheduleWsDisconnectAlarm() {
         Timber.tag("ALARM START").d("📡 [SocketService] scheduleWsDisconnectAlarm() - Rozpoczynam 30s countdown")
         if (wsAlarmJob?.isActive == true) return
         wsAlarmJob = serviceScope.launch {
             delay(30_000) // debounce, żeby nie wyć przy krótkich zanikach
             if (!SocketManager.isConnected()) {
-                Timber.tag("SocketService").w("WS: brak połączenia > ALARM")
-                Timber.tag("ALARM START").w("⚠️ [SocketService] 30s minęło i brak połączenia - uruchamiam alarm WS!")
-                if (Build.VERSION.SDK_INT >= 31 && !isInFgs) {
-                    elevateToFgsSafe() // stabilność w tle
-                }
+                Timber.tag("SocketService").w("WS: brak połączenia > powiadomienie")
+                if (Build.VERSION.SDK_INT >= 31 && !isInFgs) elevateToFgsSafe()
                 NotificationHelper.showWsDisconnectAlert(this@SocketService)
-                startAlarmSound()
             }
         }
     }
@@ -138,55 +134,7 @@ class SocketService : Service() {
     private fun cancelWsDisconnectAlarm() {
         wsAlarmJob?.cancel()
         wsAlarmJob = null
-        stopAlarmSound()
         NotificationHelper.hideWsDisconnectAlert(this)
-    }
-
-    private fun startAlarmSound() {
-        Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        Timber.tag("ALARM START").w("🔊 [SocketService] startAlarmSound() - WS DISCONNECT ALARM")
-        Timber.tag("ALARM START").w("   ├─ alarmPlayer: ${if (alarmPlayer == null) "null" else "exists"}")
-        Timber.tag("ALARM START").w("   ├─ isConnected: ${SocketManager.isConnected()}")
-        Timber.tag("ALARM START").w("   ├─ Thread: ${Thread.currentThread().name}")
-        Timber.tag("ALARM START").w("   ├─ Stack trace:")
-        Thread.currentThread().stackTrace.take(8).forEachIndexed { idx, element ->
-            Timber.tag("ALARM START").w("   │  $idx: $element")
-        }
-        Timber.tag("ALARM START").w("   └─ Timestamp: ${System.currentTimeMillis()}")
-
-        try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            alarmPlayer?.release()
-            alarmPlayer = MediaPlayer().apply {
-                setAudioAttributes(attrs)
-                setDataSource(this@SocketService, uri)
-                isLooping = true
-                prepare()
-                start()
-            }
-            Timber.tag("ALARM START").w("✅ [SocketService] Alarm WS DISCONNECT uruchomiony!")
-            Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        } catch (t: Throwable) {
-            Timber.tag("ALARM START").e(t, "❌ [SocketService] Nie udało się uruchomić dźwięku alarmu")
-            Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            Timber.tag("SocketService").e(t, "Nie udało się uruchomić dźwięku alarmu")
-        }
-    }
-
-    private fun stopAlarmSound() {
-        try {
-            alarmPlayer?.stop()
-        } catch (_: Throwable) {
-        }
-        try {
-            alarmPlayer?.release()
-        } catch (_: Throwable) {
-        }
-        alarmPlayer = null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -199,6 +147,7 @@ class SocketService : Service() {
             val namespace = "/staff"
             if (SocketManager.init(namespace, client, tokenProvider)) {
                 socketStaffEventsHandler.register()
+                kdsSocketEventsHandler.register()
                 SocketManager.connect()
             } else {
                 socketEventsRepo.emitDisconnected()
@@ -220,30 +169,17 @@ class SocketService : Service() {
                 }
 
                 is TokenRefreshHelper.RefreshResult.SessionExpired -> {
-                    Timber.tag("SocketService").e("⛔ SESJA WYGASŁA (401). Procedura awaryjna.")
-                    Timber.tag("ALARM START").w("⚠️ [SocketService] SESJA WYGASŁA - uruchamiam alarm!")
-
-                    // 1. Czyścimy dane w tle (dla pewności)
-                    tokenProvider.clearAccessTokens() // Metoda, którą (chyba) masz
-                    userPreferences.clear()     // Metoda z Twojego kodu HomeActivity
-
-                    // 2. Rozłączamy socket
+                    Timber.tag("SocketService").e("⛔ SESJA WYGASŁA (401)")
+                    tokenProvider.clearAccessTokens()
+                    userPreferences.clear()
                     try { SocketManager.disconnect() } catch (_: Exception) {}
 
-                    // 3. Uruchamiamy alarm dźwiękowy (tak jak chciałeś)
-                    startAlarmSound()
-
-                    // 4. Wysyłamy sygnał do HomeActivity, żeby zamknęło ekran
-                    val broadcastIntent = Intent(ACTION_FORCE_LOGOUT)
-                    broadcastIntent.setPackage(packageName) // Bezpieczeństwo: tylko nasza apka
+                    // Tylko powiadomienie systemowe — bez alarmu dźwiękowego
+                    val broadcastIntent = Intent(ACTION_FORCE_LOGOUT).apply {
+                        setPackage(packageName)
+                    }
                     sendBroadcast(broadcastIntent)
-
-                    // 5. Pokaż powiadomienie, które po kliknięciu otworzy LoginActivity
-                    // (W przypadku gdy aplikacja jest w tle i Broadcast nie zadziała natychmiast)
                     NotificationHelper.showSessionExpiredAlert(this@SocketService)
-
-                    // UWAGA: Nie robimy stopSelf(), czekamy aż HomeActivity nas ubije przez logout()
-                    // albo użytkownik kliknie w powiadomienie.
                 }
 
                 is TokenRefreshHelper.RefreshResult.Failed -> {
@@ -356,7 +292,6 @@ class SocketService : Service() {
         serviceScope.cancel()
         isInFgs = false
         wsAlarmJob?.cancel()
-        stopAlarmSound()
         NotificationHelper.hideWsDisconnectAlert(this)
     }
 

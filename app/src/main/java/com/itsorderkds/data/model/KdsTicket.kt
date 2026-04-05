@@ -43,6 +43,14 @@ data class KdsTicket(
     @SerializedName("slaTargetAt")
     val slaTargetAt: String? = null,  // Deadline SLA (domyślnie: createdAt + 15 min)
 
+    /**
+     * Zaplanowana godzina realizacji (deliveryInterval z Order).
+     * Jeśli ustawione — kuchnia powinna zacząć gotować odpowiednio wcześniej.
+     * Backend przekazuje to pole gdy zamówienie ma ustaloną godzinę dostawy.
+     */
+    @SerializedName("scheduledFor")
+    val scheduledFor: String? = null,  // ISO 8601
+
     @SerializedName("createdAt")
     val createdAt: String,  // ISO 8601
 
@@ -83,6 +91,46 @@ data class KdsTicket(
      * Sprawdza czy ticket ma wysoki priorytet
      */
     fun isRush(): Boolean = priority == "rush"
+
+    /**
+     * Czy to zamówienie zaplanowane (ma ustaloną godzinę realizacji).
+     */
+    fun isScheduled(): Boolean = scheduledFor != null
+
+    /**
+     * Ile milisekund pozostało do planowanej godziny realizacji.
+     * Ujemna wartość = czas już minął. Null = brak scheduledFor.
+     */
+    fun msUntilScheduled(nowMs: Long = System.currentTimeMillis()): Long? {
+        val sf = scheduledFor ?: return null
+        return runCatching {
+            java.time.ZonedDateTime.parse(sf).toInstant().toEpochMilli() - nowMs
+        }.getOrNull()
+    }
+
+    /**
+     * Ile minut pozostało do planowanej godziny realizacji.
+     */
+    fun minutesUntilScheduled(nowMs: Long = System.currentTimeMillis()): Long? =
+        msUntilScheduled(nowMs)?.let { it / 60_000 }
+
+    /**
+     * Czy zamówienie zaplanowane jest jeszcze "daleko w przyszłości" (> 60 min).
+     * Ukrywamy je z widoku aktywnych — trafia do zakładki "Zaplanowane".
+     */
+    fun isScheduledFuture(nowMs: Long = System.currentTimeMillis()): Boolean {
+        val mins = minutesUntilScheduled(nowMs) ?: return false
+        return mins > 60
+    }
+
+    /**
+     * Czy zbliża się czas realizacji (0–60 min) — czas zacząć gotować.
+     * Ticket automatycznie wskakuje do widoku aktywnych.
+     */
+    fun isScheduledSoon(nowMs: Long = System.currentTimeMillis()): Boolean {
+        val mins = minutesUntilScheduled(nowMs) ?: return false
+        return mins in 0..60
+    }
 }
 
 /**

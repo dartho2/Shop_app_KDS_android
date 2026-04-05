@@ -146,6 +146,11 @@ object NetworkModule {
     @Singleton
     fun provideOrderApi(@Named("auth_retrofit") retrofit: Retrofit): OrderApi =
         retrofit.create(OrderApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideKdsApi(@Named("auth_retrofit") retrofit: Retrofit): KdsApi =
+        retrofit.create(KdsApi::class.java)
     }
 
     @Module

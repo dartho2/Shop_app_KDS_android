@@ -86,6 +86,7 @@ import com.itsorderkds.data.model.ShiftCheckOut
 import com.itsorderkds.data.responses.UserRole
 import com.itsorderkds.data.socket.SocketAction
 import com.itsorderkds.service.SocketService
+import com.itsorderkds.ui.kds.KdsScreen
 import com.itsorderkds.ui.loading.AppLoadingScreen
 import com.itsorderkds.ui.order.OrderEvent
 import com.itsorderkds.ui.order.OrderRouteState
@@ -370,6 +371,7 @@ fun MainAppContainer(
     onLogout: () -> Unit,
     onNavControllerReady: (NavHostController) -> Unit = {}
 ) {
+    val kdsViewModel: com.itsorderkds.ui.kds.KdsViewModel = hiltViewModel()
     val navController = rememberNavController()
 
     // 🎯 Pobierz aktualną route
@@ -507,6 +509,7 @@ fun MainAppContainer(
                 snackbarHostState = snackbarHostState,
                 scope = scope,
                 ordersViewModel = ordersViewModel,
+                kdsViewModel = kdsViewModel,
                 onLogout = onLogout,
                 socketEventsRepo = socketEventsRepo
             )
@@ -522,6 +525,7 @@ private fun MainScaffoldContent(
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
     ordersViewModel: OrdersViewModel,
+    kdsViewModel: com.itsorderkds.ui.kds.KdsViewModel,
     onLogout: () -> Unit,
     socketEventsRepo: com.itsorderkds.service.SocketEventsRepository
 ) {
@@ -532,8 +536,7 @@ private fun MainScaffoldContent(
     val isCourier = uiState.userRole == UserRole.COURIER
 
     var selectedStaffTabIndex by remember { mutableIntStateOf(0) }
-    val selectedOrderIds by ordersViewModel.selectedOrderIds.collectAsStateWithLifecycle()
-    val currentBatchStatus by ordersViewModel.currentBatchStatus.collectAsStateWithLifecycle()
+    // KDS: selectedOrderIds i currentBatchStatus nie są używane w głównym flow KDS
 
     val showMainScaffoldLayout =
         remember(uiState.isInitializing) { if (isCourier) true else !uiState.isInitializing }
@@ -590,7 +593,8 @@ private fun MainScaffoldContent(
                             navController = navController,
                             onMenuClick = { scope.launch { drawerState.open() } },
                             ordersViewModel = ordersViewModel,
-                            socketEventsRepo = socketEventsRepo
+                            socketEventsRepo = socketEventsRepo,
+                            kdsViewModel = kdsViewModel
                         )
                     )
                 }
@@ -610,22 +614,10 @@ private fun MainScaffoldContent(
             // - Swipe gesture → aktualizuje podświetlenie zakładki
             // ═════════════════════════════════════════════════════════════
             bottomBar = {
-                if (currentRoute == AppDestinations.HOME && !isCourier && showMainScaffoldLayout) {
-                    StaffBottomBar(
-                        selectedTabIndex = selectedStaffTabIndex,
-                        onTabSelected = { selectedStaffTabIndex = it }
-                    )
-                }
+                // KDS nie używa dolnej belki nawigacyjnej
             },
             floatingActionButton = {
-                if (currentRoute == AppDestinations.HOME && isCourier && selectedOrderIds.isNotEmpty()) {
-                    CourierFloatingActionButtons(
-                        ordersViewModel = ordersViewModel,
-                        selectedOrderIds = selectedOrderIds,
-                        currentBatchStatus = currentBatchStatus,
-                        onLaunchPermissionRequest = { /* … */ }
-                    )
-                }
+                // KDS nie używa FAB
             }
         ) { innerPadding ->
             AppNavHost(
@@ -822,10 +814,10 @@ private fun CourierFloatingActionButtons(
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier,
-    ordersViewModel: OrdersViewModel,
-    selectedStaffTabIndex: Int,
-    onStaffTabSelected: (Int) -> Unit,
-    isCourier: Boolean
+    ordersViewModel: OrdersViewModel,  // zachowane dla ustawień/drawerów
+    selectedStaffTabIndex: Int = 0,
+    onStaffTabSelected: (Int) -> Unit = {},
+    isCourier: Boolean = false
 ) {
     NavHost(
         navController = navController,
@@ -833,11 +825,7 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(AppDestinations.HOME) {
-            HomeScreen(
-                viewModel = ordersViewModel,
-                selectedTabIndex = selectedStaffTabIndex,
-                onTabSelected = onStaffTabSelected,
-            )
+            KdsScreen()
         }
 
         // Ustawienia

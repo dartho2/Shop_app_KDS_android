@@ -29,6 +29,12 @@ object NotificationHelper {
     private const val ORDER_ALARM_CHANNEL_NAME = "Alerty nowych zamówień"
     private const val ORDER_ALARM_CHANNEL_DESC = "Nalegające powiadomienia o nowych zamówieniach"
 
+    // Kanał dla nowych ticketów KDS
+    private const val KDS_TICKET_CHANNEL_ID = "kds_new_ticket_v1"
+    private const val KDS_TICKET_CHANNEL_NAME = "Nowe zamówienia KDS"
+    private const val KDS_TICKET_CHANNEL_DESC = "Powiadomienia o nowych ticketach w kuchni"
+    private const val ID_KDS_NEW_TICKET_BASE = 5000
+
     private const val WS_ALERT_CHANNEL_ID = "ws_disconnect_alert_v1"
     private const val WS_ALERT_CHANNEL_NAME = "Alarm połączenia WS"
     private const val WS_ALERT_CHANNEL_DESC = "Alarmuje, gdy aplikacja traci połączenie z serwerem"
@@ -94,6 +100,7 @@ object NotificationHelper {
         // Kanał alarmowy (z dźwiękiem)
         createOrderAlarmChannel(context, mgr)
         createWsAlertChannel(context, mgr)
+        createKdsTicketChannel(context, mgr)
         // Kanał aktualizacji trasy
         mgr.createNotificationChannel(
             NotificationChannel(
@@ -118,14 +125,7 @@ object NotificationHelper {
 
     private fun createWsAlertChannel(context: Context, manager: NotificationManager) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val soundUri = android.media.RingtoneManager.getDefaultUri(
-            android.media.RingtoneManager.TYPE_ALARM
-        )
-        val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-
+        // WS disconnect — tylko wibracja, bez dźwięku w pętli
         val channel = NotificationChannel(
             WS_ALERT_CHANNEL_ID,
             WS_ALERT_CHANNEL_NAME,
@@ -133,7 +133,7 @@ object NotificationHelper {
         ).apply {
             description = WS_ALERT_CHANNEL_DESC
             enableVibration(true)
-            setSound(soundUri, attrs)
+            setSound(null, null)   // brak dźwięku — samo powiadomienie heads-up + wibracja
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         manager.createNotificationChannel(channel)
@@ -151,33 +151,23 @@ object NotificationHelper {
         )
 
         val builder = NotificationCompat.Builder(context, WS_ALERT_CHANNEL_ID)
-            .setSmallIcon(R.drawable.logo) // podmień na swoją ikonę
+            .setSmallIcon(R.drawable.logo)
             .setContentTitle("Brak połączenia z serwerem")
-            .setContentText("Sprawdź internet/Wi-Fi/zasilanie. Alarm wyłączy się po połączeniu.")
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setOngoing(true)         // utrzymuj, aż wróci połączenie
+            .setContentText("Sprawdź internet/Wi-Fi/zasilanie.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setOngoing(true)
             .setAutoCancel(false)
-            .setOnlyAlertOnce(false)  // pozwól odegrać dźwięk przy ponownym zgłoszeniu
+            .setOnlyAlertOnce(true)   // dźwięk tylko przy pierwszym pojawieniu się
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
                     "Aplikacja utraciła połączenie z serwerem. " +
-                            "Sprawdź internet, Wi-Fi lub router. Po powrocie połączenia alarm zgaśnie."
+                            "Sprawdź internet, Wi-Fi lub router. Powiadomienie zgaśnie po połączeniu."
                 )
             )
             .setContentIntent(openPending)
 
-        // Dla < Android 8.0
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            val uri = android.media.RingtoneManager.getDefaultUri(
-                android.media.RingtoneManager.TYPE_ALARM
-            )
-            builder.setSound(uri)
-        }
-
-        val n = builder.build()
-        n.flags = n.flags or Notification.FLAG_INSISTENT
-        return n
+        return builder.build()
     }
     fun showSessionExpiredAlert(context: Context) {
         // Tworzymy Intent prosto do ekranu logowania
@@ -240,6 +230,84 @@ object NotificationHelper {
             setSound(null, attrs) // ✅ BRAK DŹWIĘKU - odtwarzany przez MediaPlayer
         }
         manager.createNotificationChannel(channel)
+    }
+
+    private fun createKdsTicketChannel(context: Context, manager: NotificationManager) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val soundUri = android.media.RingtoneManager.getDefaultUri(
+            android.media.RingtoneManager.TYPE_NOTIFICATION
+        )
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        manager.createNotificationChannel(
+            NotificationChannel(
+                KDS_TICKET_CHANNEL_ID,
+                KDS_TICKET_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH  // heads-up
+            ).apply {
+                description = KDS_TICKET_CHANNEL_DESC
+                enableVibration(true)
+                setSound(soundUri, attrs)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+        )
+    }
+
+    /**
+     * Powiadomienie heads-up o nowym tickecie KDS.
+     * Odtwarzany JEDEN raz (nie w pętli) — standardowy dźwięk powiadomienia.
+     */
+    fun showNewKdsTicket(context: Context, orderNumber: String, itemCount: Int, isRush: Boolean) {
+        if (!canPostNotifications(context)) return
+
+        val openIntent = Intent(context, HomeActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val openPending = PendingIntent.getActivity(
+            context,
+            orderNumber.hashCode(),
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val title = if (isRush) "⚡ RUSH — Nowe zamówienie!" else "🍳 Nowe zamówienie"
+        val text  = "$orderNumber · $itemCount ${
+            when {
+                itemCount == 1 -> "pozycja"
+                itemCount in 2..4 -> "pozycje"
+                else -> "pozycji"
+            }
+        }"
+
+        val notif = NotificationCompat.Builder(context, KDS_TICKET_CHANNEL_ID)
+            .setSmallIcon(R.drawable.logo)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(false)   // każde nowe zamówienie gra dźwięk
+            .setContentIntent(openPending)
+            .also {
+                // Dla < Android 8.0
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                    it.setSound(android.media.RingtoneManager.getDefaultUri(
+                        android.media.RingtoneManager.TYPE_NOTIFICATION
+                    ))
+                    it.setVibrate(longArrayOf(0, 300, 100, 300))
+                }
+            }
+            .build()
+
+        // ID unikalne per zamówienie (żeby każdy ticket był osobnym powiadomieniem)
+        val notifId = ID_KDS_NEW_TICKET_BASE + (orderNumber.hashCode() and 0xFFFF)
+        try {
+            NotificationManagerCompat.from(context).notify(notifId, notif)
+        } catch (_: SecurityException) {}
     }
 
     fun buildServiceNotification(context: Context): Notification =
