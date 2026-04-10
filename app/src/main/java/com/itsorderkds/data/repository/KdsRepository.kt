@@ -49,8 +49,16 @@ class KdsRepository @Inject constructor(
     }
 
     /**
-     * Pobiera pojedynczy ticket z wszystkimi pozycjami
+     * Pobiera historię ticketów (HANDED_OFF + CANCELLED) z dzisiejszego dnia.
+     * Używane przez panel historii w KDS.
      */
+    suspend fun getHistoryTickets(limit: Int = 50): Resource<KdsTicketsResponse> =
+        getTickets(state = "HANDED_OFF", limit = limit)
+
+    suspend fun getCancelledTickets(limit: Int = 20): Resource<KdsTicketsResponse> =
+        getTickets(state = "CANCELLED", limit = limit)
+
+
     suspend fun getTicketWithItems(ticketId: String): Resource<KdsTicketWithItemsResponse> =
         withContext(Dispatchers.IO) {
             try {

@@ -49,6 +49,7 @@ fun AddEditPrinterDialog(
     var customCodepage by remember { mutableStateOf(printer?.codepage?.toString() ?: "") }
     var autoCut by remember { mutableStateOf(printer?.autoCut ?: false) }
     var enabled by remember { mutableStateOf(printer?.enabled ?: true) }
+    var plainTextMode by remember { mutableStateOf(printer?.plainTextMode ?: false) }
 
     // Lista sparowanych urządzeń BT
     val pairedDevices = remember { getPairedBluetoothDevices(context) }
@@ -312,6 +313,12 @@ fun AddEditPrinterDialog(
                                         customCodepage = profile.codepage?.toString() ?: ""
                                         autoCut = profile.autoCut
                                     }
+                                    // Profil "Zwykła drukarka" automatycznie włącza plainTextMode
+                                    if (profile == PrinterProfile.PLAIN_TEXT) {
+                                        plainTextMode = true
+                                    } else if (profile != PrinterProfile.CUSTOM) {
+                                        plainTextMode = false
+                                    }
                                     profileExpanded = false
                                 }
                             )
@@ -395,6 +402,29 @@ fun AddEditPrinterDialog(
                         onCheckedChange = { enabled = it }
                     )
                 }
+
+                // Tryb zwykłego tekstu — tylko dla drukarek sieciowych
+                if (selectedConnectionType == PrinterConnectionType.NETWORK) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Tryb zwykłego tekstu")
+                            Text(
+                                text = "Dla drukarek biurowych/laserowych (nie ESC/POS). Wyłącz dla drukarek termicznych POS.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                        Switch(
+                            checked = plainTextMode,
+                            onCheckedChange = { plainTextMode = it },
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -447,7 +477,7 @@ fun AddEditPrinterDialog(
                         networkPort = if (selectedConnectionType == PrinterConnectionType.NETWORK) {
                             networkPort.toIntOrNull() ?: 9100
                         } else {
-                            9100 // Domyślna wartość
+                            9100
                         },
                         printerType = selectedPrinterType,
                         profileId = selectedProfile.id,
@@ -460,7 +490,8 @@ fun AddEditPrinterDialog(
                         },
                         autoCut = autoCut,
                         enabled = enabled,
-                        order = printer?.order ?: 0
+                        order = printer?.order ?: 0,
+                        plainTextMode = plainTextMode
                     )
 
                     onSave(newPrinter)

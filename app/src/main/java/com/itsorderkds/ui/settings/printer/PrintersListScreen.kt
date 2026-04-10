@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -32,11 +33,22 @@ fun PrintersListScreen(
     val printers by viewModel.printers.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val testPrintState by viewModel.testPrintState.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var printerToEdit by remember { mutableStateOf<Printer?>(null) }
     var printerToDelete by remember { mutableStateOf<Printer?>(null) }
     var aidlTestMessage by remember { mutableStateOf<String?>(null) }
+
+    // Komunikat po zakończeniu testu
+    LaunchedEffect(testPrintState) {
+        if (testPrintState?.startsWith("done:") == true) {
+            aidlTestMessage = "✅ Test bloczka wysłany do drukarki"
+            viewModel.clearTestState()
+        } else if (testPrintState?.startsWith("error:") == true) {
+            viewModel.clearTestState()
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -101,7 +113,9 @@ fun PrintersListScreen(
                                 printer = printer,
                                 onEdit = { printerToEdit = printer },
                                 onDelete = { printerToDelete = printer },
-                                onToggleEnabled = { viewModel.toggleEnabled(printer.id) }
+                                onToggleEnabled = { viewModel.toggleEnabled(printer.id) },
+                                onTestKitchenPrint = { viewModel.testKitchenPrint(printer) },
+                                isPrinting = testPrintState == "printing:${printer.id}"
                             )
                         }
                     }
@@ -195,30 +209,27 @@ private fun PrinterListItem(
     printer: Printer,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onToggleEnabled: () -> Unit
+    onToggleEnabled: () -> Unit,
+    onTestKitchenPrint: () -> Unit,
+    isPrinting: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Lewa strona: Nazwa + Info
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Nazwa + Detale
-                Column {
+                // Lewa strona: Nazwa + Info
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = printer.name,
                         style = MaterialTheme.typography.titleMedium
                     )
-                    // Typ drukarki pod nazwą
                     Surface(
                         shape = MaterialTheme.shapes.extraSmall,
                         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -230,7 +241,7 @@ private fun PrinterListItem(
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = printer.getProfileDisplayName(),
                         style = MaterialTheme.typography.bodySmall,
@@ -242,31 +253,57 @@ private fun PrinterListItem(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
+
+                // Prawa strona: Switch + Edytuj + Usuń
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Switch(
+                        checked = printer.enabled,
+                        onCheckedChange = { onToggleEnabled() }
+                    )
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, "Edytuj")
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            "Usuń",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
 
-            // Prawa strona: Switch + Przyciski
+            // ── Przycisk "Test bloczka KDS" ──────────────────────────────
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.End
             ) {
-                // Switch ON/OFF
-                Switch(
-                    checked = printer.enabled,
-                    onCheckedChange = { onToggleEnabled() }
-                )
-
-                // Przycisk Edytuj
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, "Edytuj")
-                }
-
-                // Przycisk Usuń
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        "Usuń",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                OutlinedButton(
+                    onClick = onTestKitchenPrint,
+                    enabled = !isPrinting,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    if (isPrinting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Drukuję…")
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Print,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Test bloczka KDS")
+                    }
                 }
             }
         }

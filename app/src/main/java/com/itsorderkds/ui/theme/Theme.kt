@@ -2,17 +2,12 @@
 package com.itsorderkds.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.Color
@@ -92,35 +87,20 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun ItsOrderChatTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = true,          // KDS zawsze ciemny — wymuszony
+    dynamicColor: Boolean = false,      // wyłączone — chcemy własną paletę
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    // KDS zawsze używa ciemnego schematu — Dynamic Color wyłączony
+    val colorScheme = DarkColorScheme
 
-    // Dobierz zestaw success wg trybu
-    val successColors = if (darkTheme) {
-        SuccessColors(
-            success = SuccessDark,
-            onSuccess = OnSuccessDark,
-            successContainer = SuccessContainerDark,
-            onSuccessContainer = OnSuccessContainerDark
-        )
-    } else {
-        SuccessColors(
-            success = SuccessLight,
-            onSuccess = OnSuccessLight,
-            successContainer = SuccessContainerLight,
-            onSuccessContainer = OnSuccessContainerLight
-        )
-    }
+    // Zestaw success zawsze ciemny
+    val successColors = SuccessColors(
+        success            = SuccessDark,
+        onSuccess          = OnSuccessDark,
+        successContainer   = SuccessContainerDark,
+        onSuccessContainer = OnSuccessContainerDark
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -128,15 +108,16 @@ fun ItsOrderChatTheme(
             val window = (view.context as Activity).window
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             WindowCompat.setDecorFitsSystemWindows(window, false)
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            // Ciemny status bar — białe ikony na ciemnym tle
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
     CompositionLocalProvider(LocalSuccessColors provides successColors) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
-            content = content
+            typography  = Typography,
+            content     = content
         )
     }
 }

@@ -130,7 +130,6 @@ fun DrawerContent(
 
             // --- 2. GŁÓWNA NAWIGACJA ---
             Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                // ✅ POPRAWKA: Dodaj warunki 'showHome', 'showProducts', 'showSettings'
 
                 if (showHome) {
                     NavigationDrawerItem(
@@ -141,6 +140,14 @@ fun DrawerContent(
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    label = { Text("Ustawienia") },
+                    selected = currentRoute == AppDestinations.SETTINGS_MAIN,
+                    onClick = { onNavigateToSettings() },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
             }
 
             // --- 3. STOPKA (Footer) ---

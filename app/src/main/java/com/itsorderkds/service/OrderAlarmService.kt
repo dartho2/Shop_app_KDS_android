@@ -105,16 +105,11 @@ class OrderAlarmService : Service() {
             return START_NOT_STICKY
         }
 
-        // 2) Restart STICKY z pustym intentem
+        // 2) Restart STICKY z pustym intentem — KDS nie wznawia dźwięku w pętli
         if (intent == null) {
             tryEnsurePlaceholderForeground()
-            if (currentNotificationId != null && player?.isPlaying != true) {
-                startAlarmSound()
-                return START_STICKY
-            } else {
-                handleStopAction(startId)
-                return START_NOT_STICKY
-            }
+            handleStopAction(startId)
+            return START_NOT_STICKY
         }
 
         // 3) Natychmiast wejdź do FG (placeholder) – chroni przed 5s timeoutem
@@ -139,18 +134,17 @@ class OrderAlarmService : Service() {
                     currentOrderId = orderId
                     updateForeground(notificationId, notif)
                 } else {
-                    // ring dla nowego ordera → podmień currentOrderId
                     currentOrderId = orderId
                     NotificationManagerCompat.from(this).notify(currentNotificationId!!, notif)
                 }
                 restartAlarmSound()
-                return START_STICKY
+                return START_NOT_STICKY  // KDS: nie restartuj serwisu automatycznie
             }
 
             ACTION_START, null -> {
                 if (currentNotificationId != null) {
                     Timber.w("Alarm ($currentNotificationId) już aktywny. Ignoruję nowe $orderId (startId=$startId).")
-                    return START_STICKY
+                    return START_NOT_STICKY
                 }
                 currentNotificationId = notificationId
                 currentOrderId = orderId
@@ -158,7 +152,7 @@ class OrderAlarmService : Service() {
                 val notif = buildAlarmNotification(orderJson, useFullScreen = true)
                 updateForeground(notificationId, notif)
                 startAlarmSound()
-                return START_STICKY
+                return START_NOT_STICKY  // KDS: nie restartuj serwisu automatycznie
             }
 
             else -> {
@@ -171,7 +165,7 @@ class OrderAlarmService : Service() {
                     NotificationManagerCompat.from(this).notify(currentNotificationId!!, notif)
                 }
                 restartAlarmSound()
-                return START_STICKY
+                return START_NOT_STICKY  // KDS: nie restartuj serwisu automatycznie
             }
         }
     }
@@ -329,7 +323,7 @@ class OrderAlarmService : Service() {
 
         try {
             // Pobierz wybrany dźwięk z preferencji (najpierw per-typ 'order_alarm', potem globalny)
-            val selected = runBlocking { prefs.getNotificationSoundUri("order_alarm") } ?: runBlocking { prefs.getNotificationSoundUri() } ?: "android.resource://$packageName/${R.raw.order_iphone}"
+            val selected = runBlocking { prefs.getNotificationSoundUri("order_alarm") } ?: runBlocking { prefs.getNotificationSoundUri() } ?: "android.resource://$packageName/${R.raw.alarm1}"
             val customUri = selected.toUri()
             Timber.tag("ALARM START").d("🎵 Wybrany dźwięk: $selected")
 
@@ -341,7 +335,13 @@ class OrderAlarmService : Service() {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                isLooping = true
+                isLooping = false   // KDS: dźwięk tylko raz — nie alarm w pętli
+                setOnCompletionListener {
+                    // Po zakończeniu dźwięku zatrzymaj serwis — nie ma po co działać dalej
+                    Timber.d("Dźwięk nowego zamówienia zakończony — zatrzymuję serwis.")
+                    stopAlarmSound()
+                    stopSelf()
+                }
                 prepare()
                 start()
             }
@@ -357,36 +357,15 @@ class OrderAlarmService : Service() {
     }
 
     private fun restartAlarmSound() {
-        Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        Timber.tag("ALARM START").w("🔄 [OrderAlarmService] restartAlarmSound()")
-        Timber.tag("ALARM START").w("   ├─ player: ${if (player == null) "null" else "exists"}")
-        Timber.tag("ALARM START").w("   ├─ player?.isPlaying: ${player?.isPlaying}")
-        Timber.tag("ALARM START").w("   ├─ currentOrderId: $currentOrderId")
-        Timber.tag("ALARM START").w("   ├─ Thread: ${Thread.currentThread().name}")
-        Timber.tag("ALARM START").w("   └─ Timestamp: ${System.currentTimeMillis()}")
-
-        try {
-            if (player == null) {
-                Timber.tag("ALARM START").w("   → Player null, wywołuję startAlarmSound()")
-                startAlarmSound()
-                return
-            }
-            player?.seekTo(0)
-            if (player?.isPlaying != true) {
-                Timber.tag("ALARM START").w("   → Player nie gra, uruchamiam start()")
-                player?.start()
-            } else {
-                Timber.tag("ALARM START").w("   → Player już gra, tylko seekTo(0)")
-            }
-            Timber.tag("ALARM START").w("✅ restartAlarmSound zakończony")
-            Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            Timber.d("restartAlarmSound: seekTo(0) + start.")
-        } catch (e: Exception) {
-            Timber.tag("ALARM START").w(e, "⚠️ restartAlarmSound: fallback → startAlarmSound()")
-            Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            Timber.w(e, "restartAlarmSound: fallback – startAlarmSound()")
-            startAlarmSound()
+        // KDS: nie restartujemy dźwięku w pętli.
+        // Jeśli dźwięk już gra — nic nie rób.
+        // Jeśli nie gra (nowe zamówienie) — zagraj raz od początku.
+        if (player?.isPlaying == true) {
+            Timber.d("restartAlarmSound: dźwięk już gra — pomijam.")
+            return
         }
+        stopAlarmSound()
+        startAlarmSound()
     }
 
     private fun stopAlarmSound() {

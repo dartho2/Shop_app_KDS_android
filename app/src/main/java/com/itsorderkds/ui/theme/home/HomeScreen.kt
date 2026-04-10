@@ -41,176 +41,176 @@ import com.itsorderkds.R
 import com.itsorderkds.data.model.UpdateCourierOrder
 import com.itsorderkds.data.model.UpdateOrderData
 import com.itsorderkds.data.responses.UserRole
-import com.itsorderkds.ui.dialog.AcceptOrderSheetContent
-import com.itsorderkds.ui.order.Callbacks
+//import com.itsorderkds.ui.dialog.AcceptOrderSheetContent
+//import com.itsorderkds.ui.order.Callbacks
 import com.itsorderkds.ui.order.OrderStatusEnum
-import com.itsorderkds.ui.order.OrdersViewModel
+//import com.itsorderkds.ui.order.OrdersViewModel
 import com.itsorderkds.ui.theme.home.view.StaffView
 import timber.log.Timber
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreen(
-    modifier: Modifier = Modifier,
-    viewModel: OrdersViewModel,
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val vehicles by viewModel.vehicles.collectAsStateWithLifecycle()
-    val allOrders by viewModel.orders.collectAsStateWithLifecycle()
-    val selectedIds by viewModel.selectedOrderIds.collectAsStateWithLifecycle()
-//    val newOrders by viewModel.newOrdersList.collectAsStateWithLifecycle()
-//    val acceptedOrders by viewModel.acceptedOrdersList.collectAsStateWithLifecycle()
-    val activeOrders by viewModel.activeOrdersList.collectAsStateWithLifecycle()
-    val completedOrders by viewModel.completedOrdersList.collectAsStateWithLifecycle()
-    val dineInOrders by viewModel.dineInOrdersList.collectAsStateWithLifecycle()
-    val groupedOrders by viewModel.groupedOrdersMap.collectAsStateWithLifecycle()
-    // Jeśli pokazujemy prompt i lista pusta – dociągnij pojazdy
-
-
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        when (uiState.userRole) {
-
-
-            else -> {
-                StaffView(
-//                    newOrders = newOrders,
-//                    acceptedOrders = acceptedOrders,
-                    activeOrders = activeOrders,
-                    completedOrders = completedOrders,
-                    dineInOrders = dineInOrders,
-                    groupedOrders = groupedOrders,
-//                    allOrders = allOrders,
-                    onOrderClick = { viewModel.triggerOpenDialog(it) },
-                    isRefreshing = uiState.isGlobalLoading,
-                    onRefresh = { viewModel.syncOrdersFromApiStartOfDay() },
-                    selectedTabIndex = selectedTabIndex,
-                    onTabSelected = onTabSelected
-                )
-            }
-        }
-    }
-
-    // ✅ Dialog przeniesiony tutaj – działa dla STAFF
-    val orderToShow = uiState.orderToShowInDialog
-    if (orderToShow != null && uiState.userRole != UserRole.COURIER) {
-        Dialog(
-            onDismissRequest = { viewModel.dismissDialog() },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnClickOutside = false
-            )
-        ) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        // ✅ TŁUMACZENIE
-                        title = { Text(stringResource(R.string.order_details)) },
-                        navigationIcon = {
-                            IconButton(onClick = { viewModel.dismissDialog() }) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    // ✅ TŁUMACZENIE
-                                    contentDescription = stringResource(R.string.common_close)
-                                )
-                            }
-                        },
-                        actions = {
-                            // Kolorowy przycisk drukarki - bardziej widoczny
-                            FilledTonalIconButton(
-                                onClick = { viewModel.printOrder(orderToShow) },
-                                enabled = !uiState.isPrinting,  // Zablokuj podczas drukowania
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                modifier = Modifier.padding(end = 8.dp)
-                            ) {
-                                if (uiState.isPrinting) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Print,
-                                        contentDescription = stringResource(R.string.action_print)
-                                    )
-                                }
-                            }
-                        }
-                    )
-                }
-            ) { padding ->
-                // Ensure dialog content is recreated for a different order
-                key(orderToShow.orderId) {
-                    AcceptOrderSheetContent(
-                        modifier = Modifier.padding(padding),
-                        order = orderToShow,
-                        userRole = uiState.userRole,
-                        userId = uiState.userId,
-                        onClose = { viewModel.dismissDialog() },
-                        callbacks = Callbacks(
-                            onTimeSelected = { time ->
-                                Timber.tag("DUPSKO").d("PrintDebug Button +${time} min clicked")
-                                viewModel.updateOrder(
-                                    orderToShow.orderId,
-                                    OrderStatusEnum.ACCEPTED,
-                                    UpdateOrderData(deliveryTime = time)
-                                )
-                            },
-                            onStatusChange = { newStatus ->
-                                viewModel.updateOrder(
-                                    orderToShow.orderId,
-                                    newStatus,
-                                    UpdateOrderData()
-                                )
-                            },
-                            onCourierChange = { assign ->
-                                val courierId = if (assign) uiState.userId.orEmpty() else ""
-                                viewModel.updateOrderCourier(
-                                    orderToShow.orderId,
-                                    UpdateCourierOrder(courierId)
-                                )
-                            },
-                            onPrintOrder = viewModel::printOrder,
-                            onSendExternalCourier = { order, courierDelivery, timePrepare, timeDelivery ->
-                                viewModel.sendToExternalApi(
-                                    order,
-                                    courierDelivery,
-                                    timePrepare,
-                                    timeDelivery
-                                )
-                            },
-                            onCancelExternalCourier = { order ->
-                                viewModel.cancelExternalCourier(order)
-                            },
-                            isPrinting = uiState.isPrinting  // Przekaż flagę drukowania
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    // Dialog wyboru drukarki
-    if (uiState.showPrinterSelectionDialog && uiState.selectedOrderForPrinting != null) {
-        PrinterSelectionDialog(
-            onPrinterSelected = { printerIndex ->
-                viewModel.printOrderOnSelectedPrinter(
-                    uiState.selectedOrderForPrinting!!,
-                    printerIndex
-                )
-            },
-            onDismiss = {
-                viewModel.dismissPrinterSelectionDialog()
-            }
-        )
-    }
-}
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun HomeScreen(
+//    modifier: Modifier = Modifier,
+//    viewModel: OrdersViewModel,
+//    selectedTabIndex: Int,
+//    onTabSelected: (Int) -> Unit,
+//) {
+//    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+//    val vehicles by viewModel.vehicles.collectAsStateWithLifecycle()
+//    val allOrders by viewModel.orders.collectAsStateWithLifecycle()
+//    val selectedIds by viewModel.selectedOrderIds.collectAsStateWithLifecycle()
+////    val newOrders by viewModel.newOrdersList.collectAsStateWithLifecycle()
+////    val acceptedOrders by viewModel.acceptedOrdersList.collectAsStateWithLifecycle()
+//    val activeOrders by viewModel.activeOrdersList.collectAsStateWithLifecycle()
+//    val completedOrders by viewModel.completedOrdersList.collectAsStateWithLifecycle()
+//    val dineInOrders by viewModel.dineInOrdersList.collectAsStateWithLifecycle()
+//    val groupedOrders by viewModel.groupedOrdersMap.collectAsStateWithLifecycle()
+//    // Jeśli pokazujemy prompt i lista pusta – dociągnij pojazdy
+//
+//
+//    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+//        when (uiState.userRole) {
+//
+//
+//            else -> {
+//                StaffView(
+////                    newOrders = newOrders,
+////                    acceptedOrders = acceptedOrders,
+//                    activeOrders = activeOrders,
+//                    completedOrders = completedOrders,
+//                    dineInOrders = dineInOrders,
+//                    groupedOrders = groupedOrders,
+////                    allOrders = allOrders,
+//                    onOrderClick = { viewModel.triggerOpenDialog(it) },
+//                    isRefreshing = uiState.isGlobalLoading,
+//                    onRefresh = { viewModel.syncOrdersFromApiStartOfDay() },
+//                    selectedTabIndex = selectedTabIndex,
+//                    onTabSelected = onTabSelected
+//                )
+//            }
+//        }
+//    }
+//
+//    // ✅ Dialog przeniesiony tutaj – działa dla STAFF
+//    val orderToShow = uiState.orderToShowInDialog
+//    if (orderToShow != null && uiState.userRole != UserRole.COURIER) {
+//        Dialog(
+//            onDismissRequest = { viewModel.dismissDialog() },
+//            properties = DialogProperties(
+//                usePlatformDefaultWidth = false,
+//                dismissOnClickOutside = false
+//            )
+//        ) {
+//            Scaffold(
+//                topBar = {
+//                    TopAppBar(
+//                        // ✅ TŁUMACZENIE
+//                        title = { Text(stringResource(R.string.order_details)) },
+//                        navigationIcon = {
+//                            IconButton(onClick = { viewModel.dismissDialog() }) {
+//                                Icon(
+//                                    Icons.Default.Close,
+//                                    // ✅ TŁUMACZENIE
+//                                    contentDescription = stringResource(R.string.common_close)
+//                                )
+//                            }
+//                        },
+//                        actions = {
+//                            // Kolorowy przycisk drukarki - bardziej widoczny
+//                            FilledTonalIconButton(
+//                                onClick = { viewModel.printOrder(orderToShow) },
+//                                enabled = !uiState.isPrinting,  // Zablokuj podczas drukowania
+//                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+//                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+//                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+//                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+//                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+//                                ),
+//                                modifier = Modifier.padding(end = 8.dp)
+//                            ) {
+//                                if (uiState.isPrinting) {
+//                                    CircularProgressIndicator(
+//                                        modifier = Modifier.size(24.dp),
+//                                        strokeWidth = 2.dp
+//                                    )
+//                                } else {
+//                                    Icon(
+//                                        imageVector = Icons.Default.Print,
+//                                        contentDescription = stringResource(R.string.action_print)
+//                                    )
+//                                }
+//                            }
+//                        }
+//                    )
+//                }
+//            ) { padding ->
+//                // Ensure dialog content is recreated for a different order
+//                key(orderToShow.orderId) {
+//                    AcceptOrderSheetContent(
+//                        modifier = Modifier.padding(padding),
+//                        order = orderToShow,
+//                        userRole = uiState.userRole,
+//                        userId = uiState.userId,
+//                        onClose = { viewModel.dismissDialog() },
+//                        callbacks = Callbacks(
+//                            onTimeSelected = { time ->
+//                                Timber.tag("DUPSKO").d("PrintDebug Button +${time} min clicked")
+//                                viewModel.updateOrder(
+//                                    orderToShow.orderId,
+//                                    OrderStatusEnum.ACCEPTED,
+//                                    UpdateOrderData(deliveryTime = time)
+//                                )
+//                            },
+//                            onStatusChange = { newStatus ->
+//                                viewModel.updateOrder(
+//                                    orderToShow.orderId,
+//                                    newStatus,
+//                                    UpdateOrderData()
+//                                )
+//                            },
+//                            onCourierChange = { assign ->
+//                                val courierId = if (assign) uiState.userId.orEmpty() else ""
+//                                viewModel.updateOrderCourier(
+//                                    orderToShow.orderId,
+//                                    UpdateCourierOrder(courierId)
+//                                )
+//                            },
+//                            onPrintOrder = viewModel::printOrder,
+//                            onSendExternalCourier = { order, courierDelivery, timePrepare, timeDelivery ->
+//                                viewModel.sendToExternalApi(
+//                                    order,
+//                                    courierDelivery,
+//                                    timePrepare,
+//                                    timeDelivery
+//                                )
+//                            },
+//                            onCancelExternalCourier = { order ->
+//                                viewModel.cancelExternalCourier(order)
+//                            },
+//                            isPrinting = uiState.isPrinting  // Przekaż flagę drukowania
+//                        )
+//                    )
+//                }
+//            }
+//        }
+//    }
+//
+//    // Dialog wyboru drukarki
+//    if (uiState.showPrinterSelectionDialog && uiState.selectedOrderForPrinting != null) {
+//        PrinterSelectionDialog(
+//            onPrinterSelected = { printerIndex ->
+//                viewModel.printOrderOnSelectedPrinter(
+//                    uiState.selectedOrderForPrinting!!,
+//                    printerIndex
+//                )
+//            },
+//            onDismiss = {
+//                viewModel.dismissPrinterSelectionDialog()
+//            }
+//        )
+//    }
+//}
 
 // --- Komponent Dialog wyboru drukarki ---
 @Composable

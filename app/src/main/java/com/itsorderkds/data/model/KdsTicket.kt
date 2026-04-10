@@ -55,8 +55,34 @@ data class KdsTicket(
     val createdAt: String,  // ISO 8601
 
     @SerializedName("updatedAt")
-    val updatedAt: String  // ISO 8601
+    val updatedAt: String,  // ISO 8601
+
+    /**
+     * Typ zamówienia: "pickup" | "delivery" | "dine_in"
+     * Używany do obliczenia czasu rozpoczęcia gotowania (prepTime).
+     */
+    @SerializedName("orderType")
+    val orderType: String? = null,
+
+    /**
+     * Czytelny numer KDS z prefiksem typu zamówienia — zwracany przez API.
+     * Format: {PREFIX}-{NNN}, np. "W-003", "D-001", "M-007"
+     *   W = Wynos (PICKUP)
+     *   D = Dostawa (DELIVERY)
+     *   M = Na miejscu (DINE_IN)
+     * Licznik dzienny — reset o północy (strefa czasu tenanta).
+     * Null = API jeszcze nie obsługuje tego pola (fallback: wyświetl orderNumber).
+     */
+    @SerializedName("kdsTicketNumber")
+    val kdsTicketNumber: String? = null
 ) {
+    /**
+     * Czytelny numer do wyświetlenia na KDS i w powiadomieniach.
+     * Zwraca kdsTicketNumber (np. "W-003") jeśli API go przysyła,
+     * w przeciwnym razie fallback na orderNumber (np. "KR-24").
+     */
+    val displayNumber: String get() = kdsTicketNumber ?: orderNumber
+
     /**
      * Sprawdza czy ticket jest nowy
      */
@@ -100,11 +126,23 @@ data class KdsTicket(
     /**
      * Ile milisekund pozostało do planowanej godziny realizacji.
      * Ujemna wartość = czas już minął. Null = brak scheduledFor.
+     *
+     * Obsługuje formaty ISO 8601:
+     *  - "2026-04-07T07:00:00.000Z"  (Instant / UTC z milisekundami)
+     *  - "2026-04-07T07:00:00Z"      (Instant / UTC bez milisekund)
+     *  - "2026-04-07T09:00:00+02:00" (ZonedDateTime z offsetem)
      */
     fun msUntilScheduled(nowMs: Long = System.currentTimeMillis()): Long? {
         val sf = scheduledFor ?: return null
         return runCatching {
+            // Próba 1: Instant.parse — obsługuje Z i .000Z
+            java.time.Instant.parse(sf).toEpochMilli() - nowMs
+        }.recoverCatching {
+            // Próba 2: ZonedDateTime — obsługuje offset +02:00
             java.time.ZonedDateTime.parse(sf).toInstant().toEpochMilli() - nowMs
+        }.recoverCatching {
+            // Próba 3: OffsetDateTime — fallback
+            java.time.OffsetDateTime.parse(sf).toInstant().toEpochMilli() - nowMs
         }.getOrNull()
     }
 
@@ -117,10 +155,24 @@ data class KdsTicket(
     /**
      * Czy zamówienie zaplanowane jest jeszcze "daleko w przyszłości" (> 60 min).
      * Ukrywamy je z widoku aktywnych — trafia do zakładki "Zaplanowane".
+     *
+     * WAŻNE: jeśli SLA już minęło, zamówienie ZAWSZE trafia do Aktywnych —
+     * nawet jeśli scheduledFor jest daleko. Dotyczy np. zamówień ASAP z
+     * deliveryInterval ustawionym przez klienta na daleki termin.
      */
     fun isScheduledFuture(nowMs: Long = System.currentTimeMillis()): Boolean {
         val mins = minutesUntilScheduled(nowMs) ?: return false
-        return mins > 60
+        if (mins <= 60) return false  // bliskie — pokaż w aktywnych
+
+        // Sprawdź SLA — jeśli minęło, zamówienie trafia do Aktywnych
+        val slaMs = slaTargetAt?.let {
+            runCatching {
+                java.time.ZonedDateTime.parse(it).toInstant().toEpochMilli()
+            }.getOrNull()
+        }
+        if (slaMs != null && slaMs <= nowMs) return false  // SLA minęło — nie chowaj!
+
+        return true  // scheduledFor daleko + SLA jeszcze trwa = chowaj w Zaplanowane
     }
 
     /**

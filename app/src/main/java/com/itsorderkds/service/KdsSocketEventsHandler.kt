@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
 import com.itsorderkds.data.network.Resource
+import com.itsorderkds.data.preferences.AppPreferencesManager
 import com.itsorderkds.data.repository.KdsRepository
 import com.itsorderkds.notifications.NotificationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +26,8 @@ import javax.inject.Singleton
 class KdsSocketEventsHandler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val kdsRepository: KdsRepository,
-    private val kdsSocketEventsRepo: KdsSocketEventsRepository
+    private val kdsSocketEventsRepo: KdsSocketEventsRepository,
+    private val appPreferencesManager: AppPreferencesManager
 ) {
     private val job = SupervisorJob()
     private val ioScope = CoroutineScope(job + Dispatchers.IO)
@@ -69,13 +72,21 @@ class KdsSocketEventsHandler @Inject constructor(
                     is Resource.Success -> {
                         Timber.tag(TAG).d("✅ Fetched ticket with items: ${payload.ticketId}")
                         kdsSocketEventsRepo.emitTicketCreated(res.value)
-                        // Powiadomienie heads-up — jeden dźwięk, nie w pętli
+
+                        // Odczytaj ustawienia dźwięku z DataStore (synchronicznie — już na IO thread)
+                        val isMuted  = runBlocking { appPreferencesManager.isNotificationSoundMuted("order_alarm") }
+                        val soundUri = runBlocking { appPreferencesManager.getKdsNotificationSoundUri() }
+
+                        // Powiadomienie heads-up — dźwięk gra raz zgodnie z ustawieniami
                         NotificationHelper.showNewKdsTicket(
                             context     = context,
-                            orderNumber = res.value.ticket.orderNumber,
+                            orderNumber = res.value.ticket.displayNumber,
                             itemCount   = res.value.items.size,
-                            isRush      = res.value.ticket.priority == "rush"
+                            isRush      = res.value.ticket.priority == "rush",
+                            soundUri    = soundUri,
+                            muted       = isMuted
                         )
+                        Timber.tag(TAG).d("🔔 Powiadomienie KDS wysłane dla ${payload.ticketId} (muted=$isMuted, sound=${soundUri ?: "default"})")
                     }
                     is Resource.Failure -> {
                         Timber.tag(TAG).w("❌ Failed to fetch ticket ${payload.ticketId}: ${res.errorMessage}")

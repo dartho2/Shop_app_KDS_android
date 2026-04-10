@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.itsorderkds.notifications.NotificationHelper
 import com.itsorderkds.ui.theme.MyForegroundService
 import com.itsorderkds.util.AppPrefs
 import com.itsorderkds.util.FileLoggingTree
@@ -21,7 +22,6 @@ import android.content.Context
 
 @HiltAndroidApp
 class ItsChat : Application() {
-
 
     // Log do pliku (masz już tę klasę)
     private val fileLoggingTree by lazy { FileLoggingTree(this) }
@@ -83,6 +83,9 @@ class ItsChat : Application() {
         Thread.setDefaultUncaughtExceptionHandler(
             AutoRestartExceptionHandler(this, systemHandler)
         )
+
+        // 5) Utwórz kanały powiadomień (musi być przed jakimkolwiek powiadomieniem)
+        NotificationHelper.createChannels(this)
 
         // --- Twoje rzeczy poniżej (bez zmian) ---
         // Start foreground service
@@ -156,7 +159,7 @@ private class AutoRestartExceptionHandler(
             scheduleAppRestart()
 
         } catch (ex: Throwable) {
-            // Ignoruj błędy w samym handleru
+            // Ignoruj błędy w samym handlerze
             Timber.e(ex, "❌ Błąd w AutoRestartExceptionHandler")
         } finally {
             // ZAWSZE pozwól systemowi dokończyć (aby nie zablokowało)
@@ -198,8 +201,18 @@ private class AutoRestartExceptionHandler(
                 // Fallback na setExactAndAllowWhileIdle
                 Timber.w("⚠️ setAndAllowWhileIdle failed, próbuję fallback")
                 try {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMs, pendingIntent)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (alarmManager.canScheduleExactAlarms()) {
+                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMs, pendingIntent)
+                        } else {
+                            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMs, pendingIntent)
+                        }
+                    } else {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMs, pendingIntent)
+                    }
                     Timber.i("✅ Restart zaplanowany (fallback)")
+                } catch (se: SecurityException) {
+                    Timber.e(se, "❌ Brak uprawnień do exact alarms")
                 } catch (ex2: Exception) {
                     Timber.e(ex2, "❌ Nie mogę zaplanować restartu")
                 }

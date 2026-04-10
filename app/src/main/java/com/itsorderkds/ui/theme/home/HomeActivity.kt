@@ -88,10 +88,10 @@ import com.itsorderkds.data.socket.SocketAction
 import com.itsorderkds.service.SocketService
 import com.itsorderkds.ui.kds.KdsScreen
 import com.itsorderkds.ui.loading.AppLoadingScreen
-import com.itsorderkds.ui.order.OrderEvent
-import com.itsorderkds.ui.order.OrderRouteState
+//import com.itsorderkds.ui.order.OrderEvent
+//import com.itsorderkds.ui.order.OrderRouteState
 import com.itsorderkds.ui.order.OrderStatusEnum
-import com.itsorderkds.ui.order.OrdersViewModel
+//import com.itsorderkds.ui.order.OrdersViewModel
 import com.itsorderkds.ui.settings.MainSettingsScreen
 import com.itsorderkds.ui.settings.NotificationSettingsScreen
 import com.itsorderkds.ui.settings.PermissionsScreen
@@ -131,7 +131,7 @@ object AppDestinations {
 
 @AndroidEntryPoint
 class HomeActivity : ComponentActivity() {
-    private val ordersViewModel: OrdersViewModel by viewModels()
+//    private val ordersViewModel: OrdersViewModel by viewModels()
 
     // 🎯 Task Management: NavController do sprawdzenia backstack
     private var navController: NavHostController? = null
@@ -255,11 +255,11 @@ class HomeActivity : ComponentActivity() {
         }
         Timber.d("🔄 Registered PACKAGE_RESTARTED receiver")
 
-        handleIntentExtras(intent)
+//        handleIntentExtras(intent)
         setContent {
             ItsOrderChatTheme {
                 MainAppContainer(
-                    ordersViewModel = ordersViewModel,
+//                    ordersViewModel = ordersViewModel,
                     messageManager = messageManager,
                     socketEventsRepo = socketEventsRepo,
                     onLogout = { logout() },
@@ -301,20 +301,20 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        Timber.tag(TAG).d("[emit] Otrzymano onNewIntent")
-        setIntent(intent)
-        handleIntentExtras(intent)
-    }
+//    override fun onNewIntent(intent: Intent?) {
+//        super.onNewIntent(intent)
+//        Timber.tag(TAG).d("[emit] Otrzymano onNewIntent")
+//        setIntent(intent)
+//        handleIntentExtras(intent)
+//    }
 
-    private fun handleIntentExtras(intent: Intent?) {
-        intent?.getStringExtra(SocketAction.Extra.ORDER_JSON)?.let { orderJson ->
-            Timber.tag(TAG).d("HomeActivity przechwyciło orderJson z Intentu.")
-            ordersViewModel.handleNewOrderFromIntent(orderJson)
-            intent.removeExtra(SocketAction.Extra.ORDER_JSON)
-        }
-    }
+//    private fun handleIntentExtras(intent: Intent?) {
+//        intent?.getStringExtra(SocketAction.Extra.ORDER_JSON)?.let { orderJson ->
+//            Timber.tag(TAG).d("HomeActivity przechwyciło orderJson z Intentu.")
+//            ordersViewModel.handleNewOrderFromIntent(orderJson)
+//            intent.removeExtra(SocketAction.Extra.ORDER_JSON)
+//        }
+//    }
 
 
 
@@ -365,13 +365,14 @@ class HomeActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppContainer(
-    ordersViewModel: OrdersViewModel,
+//    ordersViewModel: OrdersViewModel,
     messageManager: GlobalMessageManager,
     socketEventsRepo: com.itsorderkds.service.SocketEventsRepository,
     onLogout: () -> Unit,
     onNavControllerReady: (NavHostController) -> Unit = {}
 ) {
     val kdsViewModel: com.itsorderkds.ui.kds.KdsViewModel = hiltViewModel()
+    val kdsUiState by kdsViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()
 
     // 🎯 Pobierz aktualną route
@@ -405,164 +406,15 @@ fun MainAppContainer(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val isHomeReady by ordersViewModel.isHomeReady.collectAsStateWithLifecycle()
-
-    val currentDialogOrderIdRef =
-        rememberUpdatedState(ordersViewModel.uiState.collectAsStateWithLifecycle().value.orderToShowInDialog?.orderId)
-    val unknownError = stringResource(R.string.unknown_error_occurred)
-
-    // 📍 Launcher dla uprawnień lokalizacji
-    val locationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-
-        if (fineLocationGranted || coarseLocationGranted) {
-            Timber.d("📍 Uprawnienia lokalizacji przyznane - można ponowić akcję")
-            scope.launch {
-                snackbarHostState.showSnackbar("Uprawnienia lokalizacji przyznane. Spróbuj ponownie.")
-            }
-        } else {
-            Timber.w("📍 Uprawnienia lokalizacji odrzucone")
-            scope.launch {
-                snackbarHostState.showSnackbar("Brak uprawnień do lokalizacji. Włącz w ustawieniach aplikacji.")
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-//        ordersViewModel.fetchGeneralSettings()
-        ordersViewModel.event.collectLatest { event ->
-            when (event) {
-                is OrderEvent.Error -> {
-                    val msg = event.body?.toString() ?: unknownError
-                    snackbarHostState.showSnackbar(message = msg)
-                }
-
-                is OrderEvent.Success -> {
-                    Timber.tag("OrderAlarmService").d("!!! dismissDialog stopAlarmService()")
-                    val openId = currentDialogOrderIdRef.value
-                    if (openId != null && event.message == openId) ordersViewModel.dismissDialog()
-                    snackbarHostState.showSnackbar(event.message)
-                }
-
-                OrderEvent.RequestLocationPermission -> {
-                    // 📍 Poproś o uprawnienia lokalizacji
-                    Timber.d("📍 Requesting location permissions...")
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                }
-
-                OrderEvent.Loading -> Unit
-                else -> {}
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        messageManager.messages.collect { msg -> snackbarHostState.showSnackbar(msg.text) }
-    }
-
-    LaunchedEffect(key1 = navController, key2 = ordersViewModel) {
-        ordersViewModel.navigationEvent.collectLatest { destinationRoute ->
-            Timber.d("Odebrano event nawigacji do: $destinationRoute")
-
-            // Sprawdź czy NavController ma ustawiony graf
-            if (navController.graph.id == 0) {
-                Timber.w("⚠️ NavController nie ma jeszcze ustawionego grafu nawigacji - pomijam nawigację")
-                return@collectLatest
-            }
-
-            val currentRoute = navController.currentDestination?.route
-            if (currentRoute != destinationRoute) {
-                Timber.d("Nawiguję, bo $currentRoute != $destinationRoute")
-                try {
-                    navController.navigate(destinationRoute) {
-                        popUpTo(AppDestinations.HOME) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                } catch (e: IllegalArgumentException) {
-                    Timber.e(e, "❌ Błąd nawigacji do $destinationRoute")
-                }
-            } else {
-                Timber.d("Pomijam nawigację, już jestem na $currentRoute")
-            }
-        }
-    }
-
-    Crossfade(
-        targetState = isHomeReady,
-        animationSpec = tween(durationMillis = 350),
-        label = "GateFade"
-    ) { ready ->
-        if (!ready) {
-            AppLoadingScreen()
-        } else {
-            MainScaffoldContent(
-                navController = navController,
-                drawerState = drawerState,
-                snackbarHostState = snackbarHostState,
-                scope = scope,
-                ordersViewModel = ordersViewModel,
-                kdsViewModel = kdsViewModel,
-                onLogout = onLogout,
-                socketEventsRepo = socketEventsRepo
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MainScaffoldContent(
-    navController: NavHostController,
-    drawerState: DrawerState,
-    snackbarHostState: SnackbarHostState,
-    scope: CoroutineScope,
-    ordersViewModel: OrdersViewModel,
-    kdsViewModel: com.itsorderkds.ui.kds.KdsViewModel,
-    onLogout: () -> Unit,
-    socketEventsRepo: com.itsorderkds.service.SocketEventsRepository
-) {
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route ?: AppDestinations.HOME
-
-    val uiState by ordersViewModel.uiState.collectAsStateWithLifecycle()
-    val isCourier = uiState.userRole == UserRole.COURIER
-
-    var selectedStaffTabIndex by remember { mutableIntStateOf(0) }
-    // KDS: selectedOrderIds i currentBatchStatus nie są używane w głównym flow KDS
-
-    val showMainScaffoldLayout =
-        remember(uiState.isInitializing) { if (isCourier) true else !uiState.isInitializing }
-
-    LaunchedEffect(selectedStaffTabIndex) { ordersViewModel.clearSelection() }
-    LaunchedEffect(currentRoute) { if (currentRoute != AppDestinations.HOME) ordersViewModel.clearSelection() }
-
-    LaunchedEffect(isCourier, currentRoute) {
-        if (isCourier && currentRoute != AppDestinations.HOME) {
-            navController.navigate(AppDestinations.HOME) {
-                popUpTo(AppDestinations.HOME) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
-
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = showMainScaffoldLayout,
+        gesturesEnabled = currentRoute == AppDestinations.HOME,
         drawerContent = {
             DrawerContent(
-                currentRoute = currentRoute,
-                // ✅ TŁUMACZENIE
-                userName = uiState.userId ?: stringResource(R.string.guest),
-                userRole = uiState.userRole?.name,
-                onLogout = {
+                currentRoute    = currentRoute,
+                userName        = "",
+                userRole        = null,
+                onLogout        = {
                     onLogout()
                     scope.launch { drawerState.close() }
                 },
@@ -573,10 +425,8 @@ private fun MainScaffoldContent(
                     scope.launch { drawerState.close() }
                 },
                 onNavigateToSettings = {
-                    if (!isCourier) {
-                        navController.navigate(AppDestinations.SETTINGS_MAIN)
-                        scope.launch { drawerState.close() }
-                    }
+                    navController.navigate(AppDestinations.SETTINGS_MAIN)
+                    scope.launch { drawerState.close() }
                 },
                 onCloseDrawer = { scope.launch { drawerState.close() } },
                 showHome = true
@@ -584,340 +434,564 @@ private fun MainScaffoldContent(
         }
     ) {
         Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            topBar = {
-                if (showMainScaffoldLayout) {
-                    AppTopBar(
-                        config = buildTopBarConfig(
-                            currentRoute = currentRoute,
-                            navController = navController,
-                            onMenuClick = { scope.launch { drawerState.open() } },
-                            ordersViewModel = ordersViewModel,
-                            socketEventsRepo = socketEventsRepo,
-                            kdsViewModel = kdsViewModel
-                        )
-                    )
-                }
-            },
-
-            // ═════════════════════════════════════════════════════════════
-            // DOLNA BELKA NAWIGACYJNA (Bottom Navigation Bar)
-            // ═════════════════════════════════════════════════════════════
-            // Wyświetlana TYLKO gdy:
-            // 1. Jesteśmy na ekranie głównym (HOME)
-            // 2. Użytkownik NIE jest kurierem (rola STAFF)
-            // 3. Główny layout jest widoczny
-            //
-            // Stan zakładki (selectedStaffTabIndex) jest synchronizowany
-            // dwukierunkowo z HorizontalPager w StaffView:
-            // - Kliknięcie zakładki → przewija pager
-            // - Swipe gesture → aktualizuje podświetlenie zakładki
-            // ═════════════════════════════════════════════════════════════
-            bottomBar = {
-                // KDS nie używa dolnej belki nawigacyjnej
-            },
-            floatingActionButton = {
-                // KDS nie używa FAB
-            }
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
         ) { innerPadding ->
-            AppNavHost(
-                navController = navController,
-                modifier = Modifier.padding(innerPadding),
-                ordersViewModel = ordersViewModel,
-                selectedStaffTabIndex = selectedStaffTabIndex,
-                onStaffTabSelected = { selectedStaffTabIndex = it },
-                isCourier = isCourier
-            )
+            NavHost(
+                navController    = navController,
+                startDestination = AppDestinations.HOME,
+                modifier         = Modifier.padding(innerPadding)
+            ) {
+                composable(AppDestinations.HOME) {
+                    KdsScreen(
+                        onNavigateToSettings = {
+                            navController.navigate(AppDestinations.SETTINGS_MAIN)
+                        }
+                    )
+                }
+                composable(AppDestinations.SETTINGS_MAIN) {
+                    SettingsMainScreen(
+                        onNavigateToNotificationSettings = { navController.navigate(AppDestinations.SETTINGS_NOTIFICATIONS) },
+                        onNavigateToPrintersList         = { navController.navigate(AppDestinations.PRINTERS_LIST) },
+                        onNavigateToPrintSettings        = { navController.navigate(AppDestinations.SETTINGS_PRINT) },
+                        onNavigateToMainSettings         = { navController.navigate(AppDestinations.SETTINGS_MAIN_CONFIG) },
+                        onNavigateToPermissions          = { navController.navigate(AppDestinations.SETTINGS_PERMISSIONS) }
+                    )
+                }
+                composable(AppDestinations.SETTINGS_MAIN_CONFIG) {
+                    MainSettingsScreen(onNavigateBack = { navController.navigateUp() })
+                }
+                composable(AppDestinations.SETTINGS_PRINT) {
+                    PrintSettingsScreen(onNavigateBack = { navController.navigateUp() })
+                }
+                composable(AppDestinations.SETTINGS_LOGS) {
+                    LogsScreen()
+                }
+                composable(AppDestinations.SETTINGS_NOTIFICATIONS) {
+                    NotificationSettingsScreen(onNavigateBack = { navController.navigateUp() })
+                }
+                composable(AppDestinations.SETTINGS_PERMISSIONS) {
+                    PermissionsScreen(onNavigateBack = { navController.navigateUp() })
+                }
+                composable(AppDestinations.PRINTERS_LIST) {
+                    com.itsorderkds.ui.settings.printer.PrintersListScreen(navController = navController)
+                }
+                composable(AppDestinations.SERIAL_DIAGNOSTIC) {
+                    com.itsorderkds.ui.settings.printer.SerialPortDiagnosticScreen(navController = navController)
+                }
+            }
         }
     }
 }
 
+//    val currentDialogOrderIdRef =
+//        rememberUpdatedState(ordersViewModel.uiState.collectAsStateWithLifecycle().value.orderToShowInDialog?.orderId)
+//    val unknownError = stringResource(R.string.unknown_error_occurred)
 
-@Composable
-private fun CourierFloatingActionButtons(
-    ordersViewModel: OrdersViewModel,
-    selectedOrderIds: Set<String>,
-    currentBatchStatus: OrderStatusEnum?,
-    onLaunchPermissionRequest: () -> Unit
-) {
-    if (selectedOrderIds.isEmpty()) return
+    // 📍 Launcher dla uprawnień lokalizacji
+//    val locationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+//        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+//    ) { permissions ->
+//        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+//        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+//
+//        if (fineLocationGranted || coarseLocationGranted) {
+//            Timber.d("📍 Uprawnienia lokalizacji przyznane - można ponowić akcję")
+//            scope.launch {
+//                snackbarHostState.showSnackbar("Uprawnienia lokalizacji przyznane. Spróbuj ponownie.")
+//            }
+//        } else {
+//            Timber.w("📍 Uprawnienia lokalizacji odrzucone")
+//            scope.launch {
+//                snackbarHostState.showSnackbar("Brak uprawnień do lokalizacji. Włącz w ustawieniach aplikacji.")
+//            }
+//        }
+//    }
 
-    val uiState by ordersViewModel.uiState.collectAsStateWithLifecycle()
-    val routeState = uiState.routeState
-    val context = LocalContext.current
-    var showConfirmationDialog by remember { mutableStateOf(false) }
+//    LaunchedEffect(Unit) {
+////        ordersViewModel.fetchGeneralSettings()
+//        ordersViewModel.event.collectLatest { event ->
+//            when (event) {
+//                is OrderEvent.Error -> {
+//                    val msg = event.body?.toString() ?: unknownError
+//                    snackbarHostState.showSnackbar(message = msg)
+//                }
+//
+//                is OrderEvent.Success -> {
+//                    Timber.tag("OrderAlarmService").d("!!! dismissDialog stopAlarmService()")
+//                    val openId = currentDialogOrderIdRef.value
+//                    if (openId != null && event.message == openId) ordersViewModel.dismissDialog()
+//                    snackbarHostState.showSnackbar(event.message)
+//                }
+//
+//                OrderEvent.RequestLocationPermission -> {
+//                    // 📍 Poproś o uprawnienia lokalizacji
+//                    Timber.d("📍 Requesting location permissions...")
+//                    locationPermissionLauncher.launch(
+//                        arrayOf(
+//                            Manifest.permission.ACCESS_FINE_LOCATION,
+//                            Manifest.permission.ACCESS_COARSE_LOCATION
+//                        )
+//                    )
+//                }
+//
+//                OrderEvent.Loading -> Unit
+//                else -> {}
+//            }
+//        }
+//    }
+//
+//    LaunchedEffect(Unit) {
+//        messageManager.messages.collect { msg -> snackbarHostState.showSnackbar(msg.text) }
+//    }
+//
+//    LaunchedEffect(key1 = navController, key2 = ordersViewModel) {
+//        ordersViewModel.navigationEvent.collectLatest { destinationRoute ->
+//            Timber.d("Odebrano event nawigacji do: $destinationRoute")
+//
+//            // Sprawdź czy NavController ma ustawiony graf
+//            if (navController.graph.id == 0) {
+//                Timber.w("⚠️ NavController nie ma jeszcze ustawionego grafu nawigacji - pomijam nawigację")
+//                return@collectLatest
+//            }
+//
+//            val currentRoute = navController.currentDestination?.route
+//            if (currentRoute != destinationRoute) {
+//                Timber.d("Nawiguję, bo $currentRoute != $destinationRoute")
+//                try {
+//                    navController.navigate(destinationRoute) {
+//                        popUpTo(AppDestinations.HOME) { inclusive = true }
+//                        launchSingleTop = true
+//                    }
+//                } catch (e: IllegalArgumentException) {
+//                    Timber.e(e, "❌ Błąd nawigacji do $destinationRoute")
+//                }
+//            } else {
+//                Timber.d("Pomijam nawigację, już jestem na $currentRoute")
+//            }
+//        }
+//    }
+//
+//    Crossfade(
+//        targetState = isHomeReady,
+//        animationSpec = tween(durationMillis = 350),
+//        label = "GateFade"
+//    ) { ready ->
+//        if (!ready) {
+//            AppLoadingScreen()
+//        } else {
+//            MainScaffoldContent(
+//                navController = navController,
+//                drawerState = drawerState,
+//                snackbarHostState = snackbarHostState,
+//                scope = scope,
+//                ordersViewModel = ordersViewModel,
+//                kdsViewModel = kdsViewModel,
+//                onLogout = onLogout,
+//                socketEventsRepo = socketEventsRepo
+//            )
+//        }
+//    }
+//}
 
-    if (showConfirmationDialog && currentBatchStatus != null) {
-        val newStatus = when (currentBatchStatus) {
-            OrderStatusEnum.ACCEPTED -> OrderStatusEnum.OUT_FOR_DELIVERY
-            OrderStatusEnum.OUT_FOR_DELIVERY -> OrderStatusEnum.COMPLETED
-            else -> null
-        }
-
-        if (newStatus != null) {
-            AlertDialog(
-                onDismissRequest = { showConfirmationDialog = false },
-                // ✅ TŁUMACZENIE
-                title = { Text(stringResource(R.string.confirmation)) },
-                text = {
-                    val route = (routeState as? OrderRouteState.Success)?.route ?: emptyList()
-                    val selectedOrdersDetails = route.filter { it.orderId in selectedOrderIds }
-                    val count = selectedOrderIds.size
-
-                    // ✅ TŁUMACZENIE (PLURALS)
-                    val questionText = when (newStatus) {
-                        OrderStatusEnum.OUT_FOR_DELIVERY -> pluralStringResource(
-                            R.plurals.confirm_status_change_in_delivery,
-                            count,
-                            count
-                        )
-
-                        OrderStatusEnum.COMPLETED -> pluralStringResource(
-                            R.plurals.confirm_status_change_delivered,
-                            count,
-                            count
-                        )
-
-                        else -> ""
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        // ✅ TŁUMACZENIE
-                        Text(
-                            stringResource(R.string.selected_orders),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        selectedOrdersDetails.forEach { order ->
-                            Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                                // ✅ TŁUMACZENIE
-                                Text(
-                                    stringResource(
-                                        R.string.order_number_list_item,
-                                        order.orderNumber
-                                    )
-                                )
-                                // ✅ TŁUMACZENIE
-                                Text(
-                                    stringResource(
-                                        R.string.order_address_list_item,
-                                        order.address ?: stringResource(R.string.no_address)
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(questionText, fontWeight = FontWeight.Bold)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showConfirmationDialog = false
-                        if (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                            )
-                            == PackageManager.PERMISSION_GRANTED
-                        ) {
-                        } else {
-                            onLaunchPermissionRequest()
-                        }
-                    }) { Text(stringResource(R.string.common_confirm)) } // ✅ TŁUMACZENIE
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        showConfirmationDialog = false
-                    }) { Text(stringResource(R.string.common_cancel)) } // ✅ TŁUMACZENIE
-                }
-            )
-        }
-    }
-
-    if (uiState.userRole == UserRole.COURIER) {
-        val singleSelectedOrderPhone = if (selectedOrderIds.size == 1) {
-            (routeState as? OrderRouteState.Success)?.route?.find { it.orderId == selectedOrderIds.first() }?.phone
-        } else null
-
-        Column(
-            modifier = Modifier.padding(end = 16.dp, bottom = 16.dp),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (selectedOrderIds.isNotEmpty()) {
-                FloatingActionButton(onClick = {
-                    val stops =
-                        (routeState as? OrderRouteState.Success)?.route?.filter { it.orderId in selectedOrderIds }
-                            ?: emptyList()
-                    planRouteOnMap(context, stops)
-                }) {
-                    Icon(
-                        Icons.Filled.Directions,
-                        contentDescription = stringResource(R.string.plan_route)
-                    ) // ✅ TŁUMACZENIE
-                }
-            }
-            if (singleSelectedOrderPhone != null) {
-                FloatingActionButton(
-                    onClick = {
-                        val intent =
-                            Intent(Intent.ACTION_DIAL, Uri.parse("tel:$singleSelectedOrderPhone"))
-                        try {
-                            context.startActivity(intent)
-                        } catch (_: ActivityNotFoundException) {
-                            // ✅ TŁUMACZENIE
-//                            Toast.makeText(
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//private fun MainScaffoldContent(
+//    navController: NavHostController,
+//    drawerState: DrawerState,
+//    snackbarHostState: SnackbarHostState,
+//    scope: CoroutineScope,
+//    ordersViewModel: OrdersViewModel,
+//    kdsViewModel: com.itsorderkds.ui.kds.KdsViewModel,
+//    onLogout: () -> Unit,
+//    socketEventsRepo: com.itsorderkds.service.SocketEventsRepository
+//) {
+//    val backStackEntry by navController.currentBackStackEntryAsState()
+//    val currentRoute = backStackEntry?.destination?.route ?: AppDestinations.HOME
+//
+//    val uiState by ordersViewModel.uiState.collectAsStateWithLifecycle()
+//    val isCourier = uiState.userRole == UserRole.COURIER
+//
+//    var selectedStaffTabIndex by remember { mutableIntStateOf(0) }
+//    // KDS: selectedOrderIds i currentBatchStatus nie są używane w głównym flow KDS
+//
+//    val showMainScaffoldLayout =
+//        remember(uiState.isInitializing) { if (isCourier) true else !uiState.isInitializing }
+//
+//    LaunchedEffect(selectedStaffTabIndex) { ordersViewModel.clearSelection() }
+//    LaunchedEffect(currentRoute) { if (currentRoute != AppDestinations.HOME) ordersViewModel.clearSelection() }
+//
+//    LaunchedEffect(isCourier, currentRoute) {
+//        if (isCourier && currentRoute != AppDestinations.HOME) {
+//            navController.navigate(AppDestinations.HOME) {
+//                popUpTo(AppDestinations.HOME) { inclusive = true }
+//                launchSingleTop = true
+//            }
+//        }
+//    }
+//
+//    ModalNavigationDrawer(
+//        drawerState = drawerState,
+//        // gesturesEnabled = true — swipe z lewej krawędzi otwiera menu.
+//        // Na ekranach ustawień (nie-HOME) gest działa normalnie.
+//        // Na HOME (KDS) dodatkowo dostępny przycisk ≡ w lewym górnym rogu
+//        // dla tabletów gdzie swipe może być przechwytywany przez system.
+//        gesturesEnabled = showMainScaffoldLayout,
+//        drawerContent = {
+//            DrawerContent(
+//                currentRoute = currentRoute,
+//                // ✅ TŁUMACZENIE
+//                userName = uiState.userId ?: stringResource(R.string.guest),
+//                userRole = uiState.userRole?.name,
+//                onLogout = {
+//                    onLogout()
+//                    scope.launch { drawerState.close() }
+//                },
+//                onNavigateToHome = {
+//                    navController.navigate(AppDestinations.HOME) {
+//                        popUpTo(AppDestinations.HOME) { inclusive = true }
+//                    }
+//                    scope.launch { drawerState.close() }
+//                },
+//                onNavigateToSettings = {
+//                    if (!isCourier) {
+//                        navController.navigate(AppDestinations.SETTINGS_MAIN)
+//                        scope.launch { drawerState.close() }
+//                    }
+//                },
+//                onCloseDrawer = { scope.launch { drawerState.close() } },
+//                showHome = true
+//            )
+//        }
+//    ) {
+//        Scaffold(
+//            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+//            topBar = {
+//                // Na głównym ekranie KDS (HOME) — brak TopBar, więcej miejsca na zamówienia
+//                // Na pozostałych ekranach (ustawienia itp.) TopBar jest widoczny
+//                if (showMainScaffoldLayout && currentRoute != AppDestinations.HOME) {
+//                    AppTopBar(
+//                        config = buildTopBarConfig(
+//                            currentRoute = currentRoute,
+//                            navController = navController,
+//                            onMenuClick = { scope.launch { drawerState.open() } },
+//                            ordersViewModel = ordersViewModel,
+//                            socketEventsRepo = socketEventsRepo,
+//                            kdsViewModel = kdsViewModel
+//                        )
+//                    )
+//                }
+//            },
+//            bottomBar = {
+//                // KDS nie używa dolnej belki nawigacyjnej
+//            },
+//            floatingActionButton = {
+//                // KDS nie używa FAB
+//            }
+//        ) { innerPadding ->
+//            AppNavHost(
+//                navController = navController,
+//                // Na HOME (KDS) — zerowy padding górny (brak TopBar)
+//                modifier = if (currentRoute == AppDestinations.HOME)
+//                    Modifier
+//                else
+//                    Modifier.padding(innerPadding),
+//                ordersViewModel = ordersViewModel,
+//                selectedStaffTabIndex = selectedStaffTabIndex,
+//                onStaffTabSelected = { selectedStaffTabIndex = it },
+//                isCourier = isCourier
+//            )
+//        }
+//    }
+//}
+//
+//
+//@Composable
+//private fun CourierFloatingActionButtons(
+//    ordersViewModel: OrdersViewModel,
+//    selectedOrderIds: Set<String>,
+//    currentBatchStatus: OrderStatusEnum?,
+//    onLaunchPermissionRequest: () -> Unit
+//) {
+//    if (selectedOrderIds.isEmpty()) return
+//
+//    val uiState by ordersViewModel.uiState.collectAsStateWithLifecycle()
+//    val routeState = uiState.routeState
+//    val context = LocalContext.current
+//    var showConfirmationDialog by remember { mutableStateOf(false) }
+//
+//    if (showConfirmationDialog && currentBatchStatus != null) {
+//        val newStatus = when (currentBatchStatus) {
+//            OrderStatusEnum.ACCEPTED -> OrderStatusEnum.OUT_FOR_DELIVERY
+//            OrderStatusEnum.OUT_FOR_DELIVERY -> OrderStatusEnum.COMPLETED
+//            else -> null
+//        }
+//
+//        if (newStatus != null) {
+//            AlertDialog(
+//                onDismissRequest = { showConfirmationDialog = false },
+//                // ✅ TŁUMACZENIE
+//                title = { Text(stringResource(R.string.confirmation)) },
+//                text = {
+//                    val route = (routeState as? OrderRouteState.Success)?.route ?: emptyList()
+//                    val selectedOrdersDetails = route.filter { it.orderId in selectedOrderIds }
+//                    val count = selectedOrderIds.size
+//
+//                    // ✅ TŁUMACZENIE (PLURALS)
+//                    val questionText = when (newStatus) {
+//                        OrderStatusEnum.OUT_FOR_DELIVERY -> pluralStringResource(
+//                            R.plurals.confirm_status_change_in_delivery,
+//                            count,
+//                            count
+//                        )
+//
+//                        OrderStatusEnum.COMPLETED -> pluralStringResource(
+//                            R.plurals.confirm_status_change_delivered,
+//                            count,
+//                            count
+//                        )
+//
+//                        else -> ""
+//                    }
+//                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+//                        // ✅ TŁUMACZENIE
+//                        Text(
+//                            stringResource(R.string.selected_orders),
+//                            fontWeight = FontWeight.Bold
+//                        )
+//                        Spacer(modifier = Modifier.height(4.dp))
+//                        selectedOrdersDetails.forEach { order ->
+//                            Column(modifier = Modifier.padding(bottom = 8.dp)) {
+//                                // ✅ TŁUMACZENIE
+//                                Text(
+//                                    stringResource(
+//                                        R.string.order_number_list_item,
+//                                        order.orderNumber
+//                                    )
+//                                )
+//                                // ✅ TŁUMACZENIE
+//                                Text(
+//                                    stringResource(
+//                                        R.string.order_address_list_item,
+//                                        order.address ?: stringResource(R.string.no_address)
+//                                    ),
+//                                    style = MaterialTheme.typography.bodySmall,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                )
+//                            }
+//                        }
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Text(questionText, fontWeight = FontWeight.Bold)
+//                    }
+//                },
+//                confirmButton = {
+//                    TextButton(onClick = {
+//                        showConfirmationDialog = false
+//                        if (ContextCompat.checkSelfPermission(
 //                                context,
-//                                stringResource(R.string.phone_app_not_found),
-//                                Toast.LENGTH_SHORT
-//                            ).show()
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Icon(
-                        Icons.Filled.Call,
-                        contentDescription = stringResource(R.string.call)
-                    ) // ✅ TŁUMACZENIE
-                }
-            }
-            if (currentBatchStatus != null) {
-                // Te stringi (in_delivery_with_count, delivered, accepted)
-                // były już zasobami, więc są OK.
-                val (buttonText, buttonIcon) = when (currentBatchStatus) {
-                    OrderStatusEnum.ACCEPTED -> stringResource(
-                        R.string.in_delivery_with_count,
-                        selectedOrderIds.size
-                    ) to Icons.Filled.LocalShipping
-
-                    OrderStatusEnum.OUT_FOR_DELIVERY -> stringResource(
-                        R.string.delivered,
-                        selectedOrderIds.size
-                    ) to Icons.Filled.CheckCircle
-
-                    else -> stringResource(
-                        R.string.accepted,
-                        selectedOrderIds.size
-                    ) to Icons.Filled.DoneAll
-                }
-                ExtendedFloatingActionButton(
-                    text = { Text(buttonText) },
-                    icon = { Icon(buttonIcon, contentDescription = buttonText) },
-                    onClick = { showConfirmationDialog = true }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AppNavHost(
-    navController: NavHostController,
-    modifier: Modifier,
-    ordersViewModel: OrdersViewModel,  // zachowane dla ustawień/drawerów
-    selectedStaffTabIndex: Int = 0,
-    onStaffTabSelected: (Int) -> Unit = {},
-    isCourier: Boolean = false
-) {
-    NavHost(
-        navController = navController,
-        startDestination = AppDestinations.HOME,
-        modifier = modifier
-    ) {
-        composable(AppDestinations.HOME) {
-            KdsScreen()
-        }
-
-        // Ustawienia
-        composable(AppDestinations.SETTINGS_MAIN) {
-            SettingsMainScreen(
-                onNavigateToNotificationSettings = { navController.navigate(AppDestinations.SETTINGS_NOTIFICATIONS) },
-                onNavigateToPrintersList = { navController.navigate(AppDestinations.PRINTERS_LIST) },
-                onNavigateToPrintSettings = { navController.navigate(AppDestinations.SETTINGS_PRINT) },
-                onNavigateToMainSettings = { navController.navigate(AppDestinations.SETTINGS_MAIN_CONFIG) },
-                onNavigateToPermissions = { navController.navigate(AppDestinations.SETTINGS_PERMISSIONS) }
-            )
-        }
-        // 🎯 NOWE: Główne ustawienia
-        composable(AppDestinations.SETTINGS_MAIN_CONFIG) {
-            MainSettingsScreen(
-                onNavigateBack = { navController.navigateUp() })
-        }
-        composable(AppDestinations.SETTINGS_PRINT) {
-            PrintSettingsScreen(onNavigateBack = { navController.navigateUp() })
-        }
-        composable(AppDestinations.SETTINGS_LOGS) { LogsScreen() }
-        // OpenHours - usunięte (nie potrzebne w KDS)
-        composable(AppDestinations.SETTINGS_NOTIFICATIONS) {
-            NotificationSettingsScreen(onNavigateBack = { navController.navigateUp() })
-        }
-        composable(AppDestinations.SETTINGS_PERMISSIONS) {
-            PermissionsScreen(onNavigateBack = { navController.navigateUp() })
-        }
-        composable(AppDestinations.PRINTERS_LIST) {
-            com.itsorderkds.ui.settings.printer.PrintersListScreen(navController = navController)
-        }
-        composable(AppDestinations.SERIAL_DIAGNOSTIC) {
-            com.itsorderkds.ui.settings.printer.SerialPortDiagnosticScreen(navController = navController)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DynamicTopAppBar(
-    navController: NavHostController,
-    currentRoute: String,
-    onMenuClick: () -> Unit,
-    onNavigateBack: () -> Unit,
-    ordersViewModel: OrdersViewModel,
-    onCheckOut: () -> Unit
-) {
-    val isHomeScreen = currentRoute == AppDestinations.HOME
-    val ordersUiState by ordersViewModel.uiState.collectAsStateWithLifecycle()
-    val isCourier = ordersUiState.userRole == UserRole.COURIER
-
-    TopAppBar(
-        title = {
-            // Tytuły dla ekranów KDS
-            when (currentRoute) {
-                AppDestinations.HOME -> Unit
-                AppDestinations.SETTINGS_MAIN -> Text(stringResource(R.string.settings_title))
-                AppDestinations.SETTINGS_PRINT -> Text(stringResource(R.string.settings_print_title))
-                AppDestinations.SETTINGS_LOGS -> Text(stringResource(R.string.settings_logs_title))
-                AppDestinations.SETTINGS_NOTIFICATIONS -> Text(stringResource(R.string.settings_notifications_title))
-                AppDestinations.PRINTERS_LIST -> Text(stringResource(R.string.printers_manage_title))
-                else -> Unit
-            }
-        },
-        navigationIcon = {
-            if (isHomeScreen) {
-                IconButton(onClick = onMenuClick) {
-                    Icon(
-                        Icons.Filled.Menu,
-                        stringResource(R.string.common_menu)
-                    )
-                }
-            } else {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        stringResource(R.string.common_back)
-                    )
-                }
-            }
-        },
-        actions = {
-            // Akcje dla kuriera - zmiana zmiany
-            if (isCourier && ordersUiState.isShiftActive) {
-                ShiftStatusAction(onCheckOut = onCheckOut)
-            }
-
-            // KDS nie wymaga zarządzania statusem restauracji
-            // Usunięto: RestaurantStatusActionItem
-        }
-    )
-}
+//                                Manifest.permission.ACCESS_FINE_LOCATION
+//                            )
+//                            == PackageManager.PERMISSION_GRANTED
+//                        ) {
+//                        } else {
+//                            onLaunchPermissionRequest()
+//                        }
+//                    }) { Text(stringResource(R.string.common_confirm)) } // ✅ TŁUMACZENIE
+//                },
+//                dismissButton = {
+//                    TextButton(onClick = {
+//                        showConfirmationDialog = false
+//                    }) { Text(stringResource(R.string.common_cancel)) } // ✅ TŁUMACZENIE
+//                }
+//            )
+//        }
+//    }
+//
+//    if (uiState.userRole == UserRole.COURIER) {
+//        val singleSelectedOrderPhone = if (selectedOrderIds.size == 1) {
+//            (routeState as? OrderRouteState.Success)?.route?.find { it.orderId == selectedOrderIds.first() }?.phone
+//        } else null
+//
+//        Column(
+//            modifier = Modifier.padding(end = 16.dp, bottom = 16.dp),
+//            horizontalAlignment = Alignment.End,
+//            verticalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            if (selectedOrderIds.isNotEmpty()) {
+//                FloatingActionButton(onClick = {
+//                    val stops =
+//                        (routeState as? OrderRouteState.Success)?.route?.filter { it.orderId in selectedOrderIds }
+//                            ?: emptyList()
+//                    planRouteOnMap(context, stops)
+//                }) {
+//                    Icon(
+//                        Icons.Filled.Directions,
+//                        contentDescription = stringResource(R.string.plan_route)
+//                    ) // ✅ TŁUMACZENIE
+//                }
+//            }
+//            if (singleSelectedOrderPhone != null) {
+//                FloatingActionButton(
+//                    onClick = {
+//                        val intent =
+//                            Intent(Intent.ACTION_DIAL, Uri.parse("tel:$singleSelectedOrderPhone"))
+//                        try {
+//                            context.startActivity(intent)
+//                        } catch (_: ActivityNotFoundException) {
+//                            // ✅ TŁUMACZENIE
+////                            Toast.makeText(
+////                                context,
+////                                stringResource(R.string.phone_app_not_found),
+////                                Toast.LENGTH_SHORT
+////                            ).show()
+//                        }
+//                    },
+//                    containerColor = MaterialTheme.colorScheme.primaryContainer
+//                ) {
+//                    Icon(
+//                        Icons.Filled.Call,
+//                        contentDescription = stringResource(R.string.call)
+//                    ) // ✅ TŁUMACZENIE
+//                }
+//            }
+//            if (currentBatchStatus != null) {
+//                // Te stringi (in_delivery_with_count, delivered, accepted)
+//                // były już zasobami, więc są OK.
+//                val (buttonText, buttonIcon) = when (currentBatchStatus) {
+//                    OrderStatusEnum.ACCEPTED -> stringResource(
+//                        R.string.in_delivery_with_count,
+//                        selectedOrderIds.size
+//                    ) to Icons.Filled.LocalShipping
+//
+//                    OrderStatusEnum.OUT_FOR_DELIVERY -> stringResource(
+//                        R.string.delivered,
+//                        selectedOrderIds.size
+//                    ) to Icons.Filled.CheckCircle
+//
+//                    else -> stringResource(
+//                        R.string.accepted,
+//                        selectedOrderIds.size
+//                    ) to Icons.Filled.DoneAll
+//                }
+//                ExtendedFloatingActionButton(
+//                    text = { Text(buttonText) },
+//                    icon = { Icon(buttonIcon, contentDescription = buttonText) },
+//                    onClick = { showConfirmationDialog = true }
+//                )
+//            }
+//        }
+//    }
+//}
+//
+//@Composable
+//fun AppNavHost(
+//    navController: NavHostController,
+//    modifier: Modifier,
+//    ordersViewModel: OrdersViewModel,  // zachowane dla ustawień/drawerów
+//    selectedStaffTabIndex: Int = 0,
+//    onStaffTabSelected: (Int) -> Unit = {},
+//    isCourier: Boolean = false
+//) {
+//    NavHost(
+//        navController = navController,
+//        startDestination = AppDestinations.HOME,
+//        modifier = modifier
+//    ) {
+//        composable(AppDestinations.HOME) {
+//            KdsScreen(
+//                onNavigateToSettings = { navController.navigate(AppDestinations.SETTINGS_MAIN) }
+//            )
+//        }
+//
+//        // Ustawienia
+//        composable(AppDestinations.SETTINGS_MAIN) {
+//            SettingsMainScreen(
+//                onNavigateToNotificationSettings = { navController.navigate(AppDestinations.SETTINGS_NOTIFICATIONS) },
+//                onNavigateToPrintersList = { navController.navigate(AppDestinations.PRINTERS_LIST) },
+//                onNavigateToPrintSettings = { navController.navigate(AppDestinations.SETTINGS_PRINT) },
+//                onNavigateToMainSettings = { navController.navigate(AppDestinations.SETTINGS_MAIN_CONFIG) },
+//                onNavigateToPermissions = { navController.navigate(AppDestinations.SETTINGS_PERMISSIONS) }
+//            )
+//        }
+//        // 🎯 NOWE: Główne ustawienia
+//        composable(AppDestinations.SETTINGS_MAIN_CONFIG) {
+//            MainSettingsScreen(
+//                onNavigateBack = { navController.navigateUp() })
+//        }
+//        composable(AppDestinations.SETTINGS_PRINT) {
+//            PrintSettingsScreen(onNavigateBack = { navController.navigateUp() })
+//        }
+//        composable(AppDestinations.SETTINGS_LOGS) { LogsScreen() }
+//        // OpenHours - usunięte (nie potrzebne w KDS)
+//        composable(AppDestinations.SETTINGS_NOTIFICATIONS) {
+//            NotificationSettingsScreen(onNavigateBack = { navController.navigateUp() })
+//        }
+//        composable(AppDestinations.SETTINGS_PERMISSIONS) {
+//            PermissionsScreen(onNavigateBack = { navController.navigateUp() })
+//        }
+//        composable(AppDestinations.PRINTERS_LIST) {
+//            com.itsorderkds.ui.settings.printer.PrintersListScreen(navController = navController)
+//        }
+//        composable(AppDestinations.SERIAL_DIAGNOSTIC) {
+//            com.itsorderkds.ui.settings.printer.SerialPortDiagnosticScreen(navController = navController)
+//        }
+//    }
+//}
+//
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun DynamicTopAppBar(
+//    navController: NavHostController,
+//    currentRoute: String,
+//    onMenuClick: () -> Unit,
+//    onNavigateBack: () -> Unit,
+//    ordersViewModel: OrdersViewModel,
+//    onCheckOut: () -> Unit
+//) {
+//    val isHomeScreen = currentRoute == AppDestinations.HOME
+//    val ordersUiState by ordersViewModel.uiState.collectAsStateWithLifecycle()
+//    val isCourier = ordersUiState.userRole == UserRole.COURIER
+//
+//    TopAppBar(
+//        title = {
+//            // Tytuły dla ekranów KDS
+//            when (currentRoute) {
+//                AppDestinations.HOME -> Unit
+//                AppDestinations.SETTINGS_MAIN -> Text(stringResource(R.string.settings_title))
+//                AppDestinations.SETTINGS_PRINT -> Text(stringResource(R.string.settings_print_title))
+//                AppDestinations.SETTINGS_LOGS -> Text(stringResource(R.string.settings_logs_title))
+//                AppDestinations.SETTINGS_NOTIFICATIONS -> Text(stringResource(R.string.settings_notifications_title))
+//                AppDestinations.PRINTERS_LIST -> Text(stringResource(R.string.printers_manage_title))
+//                else -> Unit
+//            }
+//        },
+//        navigationIcon = {
+//            if (isHomeScreen) {
+//                IconButton(onClick = onMenuClick) {
+//                    Icon(
+//                        Icons.Filled.Menu,
+//                        stringResource(R.string.common_menu)
+//                    )
+//                }
+//            } else {
+//                IconButton(onClick = onNavigateBack) {
+//                    Icon(
+//                        Icons.AutoMirrored.Filled.ArrowBack,
+//                        stringResource(R.string.common_back)
+//                    )
+//                }
+//            }
+//        },
+//        actions = {
+//            // Akcje dla kuriera - zmiana zmiany
+//            if (isCourier && ordersUiState.isShiftActive) {
+//                ShiftStatusAction(onCheckOut = onCheckOut)
+//            }
+//
+//            // KDS nie wymaga zarządzania statusem restauracji
+//            // Usunięto: RestaurantStatusActionItem
+//        }
+//    )
+//}
 
 // -----------------------------------------------------------------
 // FUNKCJE POMOCNICZE (BEZ ZMIAN, JUŻ UŻYWAJĄ TŁUMACZEŃ)

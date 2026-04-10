@@ -18,8 +18,8 @@ android {
         applicationId "com.itsorderkds"
         minSdkVersion 26
         targetSdkVersion 35
-        versionCode 68
-        versionName "2.068"
+        versionCode 5
+        versionName "1.05"
         multiDexEnabled = true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -36,12 +36,27 @@ android {
     }
     buildFeatures {
         aidl true
+        compose true
+        dataBinding true
+        viewBinding true
     }
 
     packaging {
         jniLibs {
-            // Wymuś wyrównanie bibliotek natywnych do 16 KB
+            // Wymuś wyrównanie bibliotek natywnych do 16 KB (wymagane przez Google Play dla targetSdk 35+)
             useLegacyPackaging = false
+        }
+        resources {
+            excludes += [
+                'META-INF/DEPENDENCIES',
+                'META-INF/LICENSE',
+                'META-INF/LICENSE.txt',
+                'META-INF/license.txt',
+                'META-INF/NOTICE',
+                'META-INF/NOTICE.txt',
+                'META-INF/notice.txt',
+                'META-INF/*.kotlin_module'
+            ]
         }
     }
 
@@ -65,11 +80,6 @@ android {
 //    composeOptions {
 //        kotlinCompilerExtensionVersion = "1.1.1"
 //    }
-    buildFeatures {
-        compose true
-        dataBinding true
-        viewBinding true
-    }
     lintOptions {
         checkReleaseBuilds false
         abortOnError false

@@ -2,37 +2,41 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.itsorderkds">
+
+    <!-- Sieć i komunikacja -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- Powiadomienia -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
+    <!-- Usługi pierwszoplanowe -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- FOREGROUND_SERVICE_DATA_SYNC: SocketService utrzymuje połączenie WebSocket (socket.io)
+         do serwera zamówień restauracyjnych w celu odbierania zamówień KDS w czasie rzeczywistym -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+
+    <!-- Budzenie urządzenia przy nowych zamówieniach -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.MANAGE_APP_TOKENS" />
-    <uses-permission android:name="android.permission.ACTION_OPEN_DOCUMENT" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Drukarka Bluetooth (opcjonalna) -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" android:required="false"/>
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"    android:required="false"/>
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.intent.action.PACKAGE_RESTARTED" />
-    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Drukarka USB (opcjonalna) -->
+    <uses-feature android:name="android.hardware.usb.host" />
+
+    <!-- Firebase Cloud Messaging -->
     <uses-permission android:name="com.itsorderkds.C2D_MESSAGE" />
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
-    <uses-feature android:name="android.hardware.usb.host" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.SET_ALARM" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
-<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>-->
+
     <permission android:name="com.itsorderkds.permission.C2D_MESSAGE" android:protectionLevel="signature" />
     <application
         android:name=".ItsChat"
@@ -44,7 +48,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ITSChat">
 
-        <!-- Wsparcie dla 16 KB stron pamięci -->
+        <!-- Wsparcie dla 16 KB stron pamięci (wymagane przez Google Play dla targetSdk 35+) -->
         <property
             android:name="android.app.property.16KB_PAGE_SIZE_ENABLED"
             android:value="true" />
@@ -96,9 +100,9 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        <service android:name=".service.OrderAlarmService" android:exported="false"
-            android:foregroundServiceType="mediaPlayback"
-            />
+<!--        <service android:name=".service.OrderAlarmService" android:exported="false"-->
+<!--            android:foregroundServiceType="mediaPlayback"-->
+<!--            />-->
 
         <receiver
             android:name="com.google.firebase.iid.FirebaseInstanceIdReceiver"

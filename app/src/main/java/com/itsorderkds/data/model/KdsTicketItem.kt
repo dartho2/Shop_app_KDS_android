@@ -3,6 +3,24 @@ package com.itsorderkds.data.model
 import com.google.gson.annotations.SerializedName
 
 /**
+ * Typ drukarki przypisanej do pozycji ticketu KDS.
+ * Zgodnie z API: printer: 'KITCHEN' | 'STANDARD'
+ */
+enum class KdsItemPrinterType {
+    KITCHEN,
+    STANDARD;
+
+    companion object {
+        fun fromString(value: String?): KdsItemPrinterType =
+            when (value?.uppercase()) {
+                "KITCHEN" -> KITCHEN
+                "STANDARD" -> STANDARD
+                else -> STANDARD  // domyślnie STANDARD gdy brak pola
+            }
+    }
+}
+
+/**
  * Pozycja ticketu KDS - pojedynczy produkt w zamówieniu
  * Zgodnie z dokumentacją KDS API
  */
@@ -40,6 +58,9 @@ data class KdsTicketItem(
     @SerializedName("notes")
     val notes: List<String> = emptyList(),  // Alergeny, modyfikacje, życzenia
 
+    @SerializedName("printer")
+    val printer: String? = null,  // "KITCHEN" | "STANDARD" — typ drukarki dla pozycji
+
     @SerializedName("firedAt")
     val firedAt: String? = null,  // ISO 8601 — kiedy zaczęto gotować
 
@@ -55,6 +76,16 @@ data class KdsTicketItem(
     @SerializedName("updatedAt")
     val updatedAt: String
 ) {
+    /** Zwraca enum KdsItemPrinterType na podstawie pola printer */
+    val printerType: KdsItemPrinterType
+        get() = KdsItemPrinterType.fromString(printer)
+
+    /** true gdy pozycja należy do drukarki kuchennej */
+    fun isKitchenItem(): Boolean = printerType == KdsItemPrinterType.KITCHEN
+
+    /** true gdy pozycja należy do drukarki standardowej */
+    fun isStandardItem(): Boolean = printerType == KdsItemPrinterType.STANDARD
+
     /**
      * Sprawdza czy pozycja czeka na przygotowanie
      */

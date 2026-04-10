@@ -3,13 +3,22 @@ package com.itsorderkds.data.model
 /**
  * Stan ticketu KDS (Kitchen Display System)
  */
-enum class KdsTicketState {
-    NEW,           // Ticket właśnie przyszedł z zamówienia
-    ACKED,         // Kuchnia potwierdziła przyjęcie
-    IN_PROGRESS,   // Trwa przygotowanie
-    READY,         // Gotowe do odbioru/wydania
-    HANDED_OFF,    // Wydane kurierowi/obsłudze
-    CANCELLED      // Anulowane
+enum class KdsTicketState(val displayName: String, val apiValue: String) {
+    NEW("Nowe", "NEW"),
+    ACKED("Zaakceptowane", "ACKED"),
+    IN_PROGRESS("W trakcie", "IN_PROGRESS"),
+    READY("Gotowe", "READY"),
+    HANDED_OFF("Wydane", "HANDED_OFF"),
+    CANCELLED("Anulowane", "CANCELLED");
+
+    companion object {
+        fun fromApiValue(v: String?): KdsTicketState? =
+            entries.find { it.apiValue.equals(v, ignoreCase = true) }
+
+        /** Statusy ktore mozna wybrac jako trigger wydruku */
+        fun triggerOptions(): List<KdsTicketState> =
+            listOf(NEW, ACKED, IN_PROGRESS, READY, HANDED_OFF)
+    }
 }
 
 /**

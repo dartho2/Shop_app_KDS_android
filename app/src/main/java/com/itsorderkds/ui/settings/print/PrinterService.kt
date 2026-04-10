@@ -4,10 +4,13 @@ import android.content.Context
 import android.widget.Toast
 import com.dantsu.escposprinter.EscPosCharsetEncoding
 import com.dantsu.escposprinter.EscPosPrinter
+import com.itsorderkds.data.model.KdsTicketItem
+import com.itsorderkds.data.model.KdsTicketState
 import com.itsorderkds.data.model.Order
 import com.itsorderkds.data.model.Printer
 import com.itsorderkds.data.preferences.AppPreferencesManager
 import com.itsorderkds.data.preferences.PrinterPreferences
+import com.itsorderkds.data.preferences.PrintRulesRepository
 import com.itsorderkds.ui.settings.printer.PrinterManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +26,8 @@ import javax.inject.Singleton
 @Singleton
 class PrinterService @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val appPreferencesManager: AppPreferencesManager
+    private val appPreferencesManager: AppPreferencesManager,
+    private val printRulesRepository: PrintRulesRepository
 ) {
     enum class DocumentType { KITCHEN_TICKET, RECEIPT, TEST }
 
@@ -104,7 +108,12 @@ class PrinterService @Inject constructor(
         return EscPosCharsetEncoding(p.encoding, p.codepage ?: 255)
     }
 
-    internal suspend fun printOne(target: TargetConfig, order: Order, useDeliveryInterval: Boolean) {
+    internal suspend fun printOne(
+        target: TargetConfig,
+        order: Order,
+        useDeliveryInterval: Boolean,
+        items: List<KdsTicketItem> = emptyList()
+    ) {
         val cfg = target.printer
 
         // MONITORING: Rozpocznij pomiar czasu
@@ -114,12 +123,33 @@ class PrinterService @Inject constructor(
         if (cfg.connectionType == com.itsorderkds.data.model.PrinterConnectionType.BUILTIN) {
             Timber.d("🖨️ Drukarka wbudowana (serial port)")
             printOneSerial(target, order, useDeliveryInterval)
-
-            // MONITORING: Zakończ pomiar
             val printDuration = System.currentTimeMillis() - printStartTime
             Timber.d("⏱️ Print duration (BUILTIN): ${printDuration}ms, printer=${cfg.name}")
             return
         }
+
+        // ── Tryb zwykłego tekstu — dla drukarek biurowych/laserowych ─────────
+        if (cfg.plainTextMode &&
+            cfg.connectionType == com.itsorderkds.data.model.PrinterConnectionType.NETWORK) {
+            val ip = cfg.networkIp ?: cfg.deviceId
+            val port = cfg.networkPort
+            Timber.d("🖨️ [plainTextMode] Drukuję czysty tekst na $ip:$port")
+            try {
+                val plainText = buildPlainTextTicket(order)
+                PrinterConnectionManager.printPlainTextOverNetwork(ip, port, plainText)
+                val printDuration = System.currentTimeMillis() - printStartTime
+                Timber.d("✅ [plainTextMode] Wydruk zakończony ${cfg.name} (${printDuration}ms)")
+            } catch (e: Exception) {
+                val printDuration = System.currentTimeMillis() - printStartTime
+                Timber.e(e, "❌ [plainTextMode] Błąd drukowania na ${cfg.name}")
+                Timber.e("⏱️ Print duration (ERROR): ${printDuration}ms, printer=${cfg.name}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Błąd drukowania: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            return
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         Timber.d("🔒 PrinterSTEP: [ENTRY] target=${target.printer.printerType} order=${order.orderNumber}")
         val connection = getConnectionFor(cfg)
@@ -128,8 +158,6 @@ class PrinterService @Inject constructor(
                 Toast.makeText(context, "Nie udało się połączyć z drukarką (${cfg.name})", Toast.LENGTH_SHORT).show()
             }
             Timber.w("❌ PrinterSTEP: brak połączenia ${cfg.deviceId}")
-
-            // MONITORING: Błąd połączenia
             val failDuration = System.currentTimeMillis() - printStartTime
             Timber.e("⏱️ Print FAILED after ${failDuration}ms, printer=${cfg.name}, reason=no_connection")
             return
@@ -137,7 +165,13 @@ class PrinterService @Inject constructor(
 
         try {
             val template = PrintTemplate.fromId(cfg.templateId)
-            val ticket = PrintTemplateFactory.buildTicket(context, order, template, useDeliveryInterval)
+            val ticket = if (template == PrintTemplate.KITCHEN_ONLY && items.isNotEmpty()) {
+                // Szablon kuchenny z filtrowaniem po printer=KITCHEN
+                Timber.d("🍳 KITCHEN_ONLY: filtrowanie items (total=${items.size})")
+                PrintTemplateFactory.buildKitchenOnlyTicket(context, order, items, useDeliveryInterval)
+            } else {
+                PrintTemplateFactory.buildTicket(context, order, template, useDeliveryInterval)
+            }
             val escCharset = toCharsetEncoding(cfg)
             Timber.d("✅ Dokument gotowy (template=${cfg.templateId}, autoCut=${cfg.autoCut})")
 
@@ -150,13 +184,11 @@ class PrinterService @Inject constructor(
                 }
             }
 
-            // MONITORING: Sukces drukowania
             val printDuration = System.currentTimeMillis() - printStartTime
             Timber.d("✅ Wydruk zakończony ${cfg.name}")
             Timber.d("⏱️ Print duration (SUCCESS): ${printDuration}ms, printer=${cfg.name}, type=${cfg.connectionType}")
 
         } catch (e: Exception) {
-            // MONITORING: Błąd drukowania
             val printDuration = System.currentTimeMillis() - printStartTime
             Timber.e(e, "❌ Błąd drukowania na ${cfg.name}")
             Timber.e("⏱️ Print duration (ERROR): ${printDuration}ms, printer=${cfg.name}, error=${e.message}")
@@ -197,6 +229,108 @@ class PrinterService @Inject constructor(
 
     suspend fun printKitchenTicket(order: Order, useDeliveryInterval: Boolean = false) {
         printOrder(order, useDeliveryInterval, DocumentType.KITCHEN_TICKET)
+    }
+
+    /**
+     * Drukuje bloczek kuchenny z filtrowaniem pozycji po printer=KITCHEN.
+     * Gdy [items] puste — fallback na [printKitchenTicket] (drukuje wszystkie pozycje).
+     */
+    suspend fun printKitchenTicketWithItems(
+        order: Order,
+        items: List<KdsTicketItem>,
+        useDeliveryInterval: Boolean = false
+    ) {
+        if (items.isEmpty()) {
+            printKitchenTicket(order, useDeliveryInterval)
+            return
+        }
+        printMutex.lock()
+        try {
+            val targets = resolveTargetsFor(DocumentType.KITCHEN_TICKET)
+            if (targets.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Brak skonfigurowanej drukarki kuchennej", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+            for (t in targets) {
+                printOne(t, order, useDeliveryInterval, items)
+                delay(500)
+            }
+        } finally {
+            printMutex.unlock()
+        }
+    }
+
+    /**
+     * Generuje czysty tekst biletu KDS bez żadnych kodów ESC/POS.
+     * Przeznaczony dla zwykłych drukarek sieciowych (biurowe, laserowe itp.).
+     */
+    private fun buildPlainTextTicket(order: Order): String {
+        val sep = "================================\n"
+        val sb = StringBuilder()
+        sb.append(sep)
+        sb.append("  ZAMOWIENIE: ${order.orderNumber}\n")
+        sb.append(sep)
+
+        // Typ zamówienia
+        val typeLabel = when (order.deliveryType?.apiValue) {
+            "pickup", "local_pickup" -> "WYNOS"
+            "delivery", "delivery_external" -> "DOSTAWA"
+            "dine_in" -> "NA MIEJSCU"
+            else -> order.deliveryType?.apiValue?.uppercase() ?: ""
+        }
+        if (typeLabel.isNotBlank()) sb.append("  Typ: $typeLabel\n")
+
+        // Czas
+        if (order.isAsap == true) {
+            sb.append("  Czas: NA JUZ\n")
+        } else {
+            val time = order.deliveryInterval ?: order.deliveryTime
+            if (!time.isNullOrBlank()) sb.append("  Zaplanowane: $time\n")
+        }
+        sb.append("\n")
+
+        // Pozycje
+        sb.append("  POZYCJE:\n")
+        sb.append("--------------------------------\n")
+        order.products.forEach { product ->
+            sb.append("  ${product.quantity}x ${product.name}\n")
+            // Dodatki
+            product.addonsGroup.forEach { group ->
+                group.addons.forEach { addon ->
+                    sb.append("    + ${addon.name}\n")
+                }
+            }
+            // Notatki do pozycji
+            product.note?.forEach { note ->
+                if (note.isNotBlank()) sb.append("    ! $note\n")
+            }
+        }
+
+        // Uwaga ogólna
+        if (!order.note.isNullOrBlank()) {
+            sb.append("--------------------------------\n")
+            sb.append("  UWAGA: ${order.note}\n")
+        }
+
+        sb.append(sep)
+        sb.append("\n\n\n") // marginesy na końcu strony
+        return sb.toString()
+    }
+
+    /**
+     * Drukuje testowy bloczek KDS (jak po wydaniu zamówienia) na konkretnej drukarce.
+     * Używany z przycisku "Test bloczka" w ustawieniach drukarki.
+     */
+    suspend fun printKitchenTicketTest(printer: Printer) {
+        printMutex.lock()
+        try {
+            val target = TargetConfig(printer)
+            printOne(target, buildFakeKdsOrder(), useDeliveryInterval = false)
+        } finally {
+            printMutex.unlock()
+        }
     }
 
     suspend fun printReceipt(order: Order, useDeliveryInterval: Boolean = false) {
@@ -446,6 +580,92 @@ class PrinterService @Inject constructor(
         }
     }
 
+    /**
+     * Drukuje zamówienie na podstawie reguł przypisanych do statusu ticketu KDS.
+     * Wywoływane każdorazowo gdy ticket zmienia stan (ACK, START, READY, HANDOFF, CANCEL).
+     *
+     * Logika:
+     * 1. Pobierz reguły dla [newState]
+     * 2. Dla każdej aktywnej reguły:
+     *    a. Wybierz drukarki wg [rule.printerIds] (puste = wszystkie włączone)
+     *    b. Użyj [rule.templateOverrideId] jeśli ustawiony, else szablon drukarki
+     * 3. Drukuj – bez blokowania głównej kolejki (osobny mutex dla reguł)
+     */
+    suspend fun printOnTicketStatusChange(order: Order, newState: String) {
+        printOnTicketStatusChangeWithItems(order, newState, emptyList())
+    }
+
+    /**
+     * Drukuje zamówienie na podstawie reguł przypisanych do statusu ticketu KDS.
+     *
+     * Wersja z [items] — gdy szablon drukarki to `template_kitchen_only`,
+     * drukuje tylko pozycje z [KdsTicketItem.printer] == "KITCHEN".
+     *
+     * @param items Lista pozycji ticketu KDS (z polem printer). Gdy puste — zachowanie
+     *              identyczne z [printOnTicketStatusChange] (drukuje wszystkie pozycje z Order).
+     */
+    suspend fun printOnTicketStatusChangeWithItems(
+        order: Order,
+        newState: String,
+        items: List<KdsTicketItem>
+    ) {
+        val stateEnum = KdsTicketState.fromApiValue(newState) ?: run {
+            Timber.tag("PRINT_RULES").w("⏭️ Nieznany stan KDS: $newState – brak druku")
+            return
+        }
+        val rules = printRulesRepository.getRules()
+            .filter { it.enabled && it.status == stateEnum }
+
+        if (rules.isEmpty()) {
+            Timber.tag("PRINT_RULES").d("⏭️ Brak aktywnych reguł dla stanu $newState")
+            return
+        }
+
+        val allPrinters = PrinterPreferences.getPrinters(context)
+            .filter { it.enabled && it.deviceId.isNotBlank() }
+
+        Timber.tag("PRINT_RULES").d("🖨️ printOnTicketStatusChange: stan=$newState, reguł=${rules.size}")
+
+        printMutex.lock()
+        try {
+            for (rule in rules) {
+                val targets: List<Printer> = if (rule.printerIds.isEmpty()) {
+                    allPrinters
+                } else {
+                    allPrinters.filter { it.id in rule.printerIds }
+                }
+
+                if (targets.isEmpty()) {
+                    Timber.tag("PRINT_RULES").w("⚠️ Reguła ${rule.id}: brak pasujących drukarek")
+                    continue
+                }
+
+                for (printer in targets) {
+                    // Nadpisz szablon jeśli reguła ma własny
+                    val effectivePrinter = if (rule.templateOverrideId != null) {
+                        printer.copy(templateId = rule.templateOverrideId)
+                    } else {
+                        printer
+                    }
+                    val isKitchenOnly = effectivePrinter.templateId == PrintTemplate.KITCHEN_ONLY.id
+                    Timber.tag("PRINT_RULES").d(
+                        "  → drukuję na ${effectivePrinter.name} " +
+                        "(tpl=${effectivePrinter.templateId}, kitchenOnly=$isKitchenOnly, items=${items.size})"
+                    )
+                    printOne(
+                        target            = TargetConfig(effectivePrinter),
+                        order             = order,
+                        useDeliveryInterval = false,
+                        items             = items
+                    )
+                    delay(300)
+                }
+            }
+        } finally {
+            printMutex.unlock()
+        }
+    }
+
     suspend fun printTest(deviceId: String, profile: PrinterProfile, templateId: String, autoCut: Boolean) {
         val printer = Printer(
             id = UUID.randomUUID().toString(),
@@ -525,6 +745,100 @@ class PrinterService @Inject constructor(
             isScheduled = false
         )
     }
+
+    /**
+     * Testowy bloczek KDS — wygląda jak prawdziwe zamówienie wydane do kuchni.
+     * Zawiera typowe pozycje, notatkę i typ zamówienia (wynos).
+     */
+    private fun buildFakeKdsOrder(): Order {
+        val fakeProducts = listOf(
+            com.itsorderkds.data.model.OrderProduct(
+                name        = "Hosomaki Tuna",
+                quantity    = 2,
+                price       = 0.0,
+                salePrice   = 0.0,
+                discount    = 0.0,
+                comment     = null,
+                addonsGroup = emptyList(),
+                note        = listOf("bez sosu")
+            ),
+            com.itsorderkds.data.model.OrderProduct(
+                name        = "California Roll",
+                quantity    = 1,
+                price       = 0.0,
+                salePrice   = 0.0,
+                discount    = 0.0,
+                comment     = null,
+                addonsGroup = emptyList(),
+                note        = emptyList()
+            ),
+            com.itsorderkds.data.model.OrderProduct(
+                name        = "Edamame",
+                quantity    = 3,
+                price       = 0.0,
+                salePrice   = 0.0,
+                discount    = 0.0,
+                comment     = null,
+                addonsGroup = emptyList(),
+                note        = emptyList()
+            )
+        )
+        return Order(
+            orderId               = "test-kds",
+            status                = true,
+            total                 = 0.0,
+            consumer              = com.itsorderkds.data.model.Consumer(
+                name        = "Jan Kowalski",
+                email       = "test@kds.pl",
+                phone       = "+48123456789",
+                countryCode = "48"
+            ),
+            orderNumber           = "W-001",
+            orderStatus           = com.itsorderkds.data.model.OrderStatus(
+                name     = "accepted",
+                sequence = 0,
+                slug     = "ACCEPTED"
+            ),
+            orderStatusActivities = emptyList(),
+            paymentMethod         = com.itsorderkds.ui.order.PaymentMethod.CARD,
+            paymentStatus         = com.itsorderkds.ui.order.PaymentStatus.CONFIRMED,
+            paymentStatusRank     = null,
+            amount                = 0.0,
+            taxTotal              = 0.0,
+            shippingTotal         = 0.0,
+            walletBalance         = 0.0,
+            additionalFeeTotal    = null,
+            additionalFees        = emptyList(),
+            couponTotalDiscount   = null,
+            currency              = "PLN",
+            isGuest               = false,
+            pointsAmount          = 0.0,
+            usedPoint             = 0.0,
+            createdAt             = java.time.Instant.now().toString(),
+            updatedAt             = java.time.Instant.now().toString(),
+            shippingAddress       = com.itsorderkds.data.model.ShippingAddress(
+                street      = "",
+                city        = "",
+                numberHome  = "",
+                numberFlat  = "",
+                coordinates = null
+            ),
+            deliveryInterval = null,
+            deliveryTime     = null,
+            isAsap           = true,
+            products         = fakeProducts,
+            note             = "Testowy wydruk KDS",
+            deliveryType     = com.itsorderkds.ui.order.OrderDelivery.PICKUP,
+            courier          = null,
+            source           = null,
+            orderKey         = null,
+            ip               = null,
+            externalDelivery = null,
+            type             = com.itsorderkds.ui.order.TypeOrderEnum.ASAP,
+            isScheduled      = false
+        )
+    }
+
 
     /**
      * Drukuje na porcie szeregowym (dla drukarek wbudowanych).

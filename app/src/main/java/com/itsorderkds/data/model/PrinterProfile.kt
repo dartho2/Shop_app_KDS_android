@@ -33,28 +33,31 @@ enum class PrinterProfile(
         autoCut = false
     ),
 
+    PLAIN_TEXT(
+        id = "profile_plain_text",
+        displayName = "Zwykła drukarka (tekst)",
+        description = "Drukarka biurowa / laserowa / atramentowa przez WiFi — bez ESC/POS",
+        encoding = "UTF-8",
+        codepage = null,
+        autoCut = false
+    ),
+
     CUSTOM(
         id = "profile_custom",
         displayName = "Niestandardowy",
-        description = "Niestandardowy profil - ustawienia ręczne",
+        description = "Ustawienia ręczne — encoding i codepage ręcznie",
         encoding = "UTF-8",
         codepage = null,
         autoCut = false
     );
 
     companion object {
-        /**
-         * Pobiera profil na podstawie ID.
-         */
         fun fromId(id: String?): PrinterProfile {
             return values().find { it.id == id } ?: CUSTOM
         }
 
-        /**
-         * Zwraca wszystkie dostępne profile.
-         */
         fun getAllProfiles(): List<PrinterProfile> {
-            return listOf(POS_8390_DUAL, MOBILE_SSP, CUSTOM)
+            return listOf(POS_8390_DUAL, MOBILE_SSP, PLAIN_TEXT, CUSTOM)
         }
     }
 }

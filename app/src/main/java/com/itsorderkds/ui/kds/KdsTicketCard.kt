@@ -3,12 +3,15 @@ package com.itsorderkds.ui.kds
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,17 +52,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.itsorderkds.data.model.KdsTicket
 import com.itsorderkds.data.model.KdsTicketItem
+import com.itsorderkds.ui.theme.KdsCard
+import com.itsorderkds.ui.theme.KdsCardBorder
+import com.itsorderkds.ui.theme.KdsScheduled
+import com.itsorderkds.ui.theme.KdsSlaBlue
+import com.itsorderkds.ui.theme.KdsSlaGray
+import com.itsorderkds.ui.theme.KdsSlaGreen
+import com.itsorderkds.ui.theme.KdsSlaRed
+import com.itsorderkds.ui.theme.KdsSlaYellow
+import com.itsorderkds.ui.theme.KdsTextMuted
+import com.itsorderkds.ui.theme.KdsTextPrimary
+import com.itsorderkds.ui.theme.KdsTextSecondary
 import kotlinx.coroutines.delay
 import java.time.ZonedDateTime
 
-// ─── Kolory SLA ─────────────────────────────────────────────────────────────
+// ─── Kolory SLA — zoptymalizowane pod ciemny motyw KDS ──────────────────────
 
-private val SlaGreen  = Color(0xFF2E7D32)
-private val SlaYellow = Color(0xFFF9A825)
-private val SlaRed    = Color(0xFFC62828)
-private val SlaGray   = Color(0xFF757575)
-private val SlaBlue   = Color(0xFF1565C0)
-private val ScheduledColor = Color(0xFF6A1B9A)   // fioletowy dla zaplanowanych
+private val SlaGreen       = KdsSlaGreen      // > 5 min — spokojnie
+private val SlaYellow      = KdsSlaYellow     // 0–5 min — uwaga
+private val SlaRed         = KdsSlaRed        // minął czas — alarm
+private val SlaGray        = KdsSlaGray       // wygasły / done
+private val SlaBlue        = KdsSlaBlue       // wydano
+private val ScheduledColor = KdsScheduled     // zaplanowane
 
 // ─── Baner zaplanowanego zamówienia ─────────────────────────────────────────
 
@@ -68,7 +82,11 @@ private val ScheduledColor = Color(0xFF6A1B9A)   // fioletowy dla zaplanowanych
  * Pokazuje: czas zaplanowania + odliczanie do początku gotowania.
  */
 @Composable
-private fun ScheduledBanner(ticket: KdsTicket) {
+private fun ScheduledBanner(
+    ticket: KdsTicket,
+    prepTimePickupMin: Int = 30,
+    prepTimeDeliveryMin: Int = 60
+) {
     val sf = ticket.scheduledFor ?: return
 
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -80,9 +98,7 @@ private fun ScheduledBanner(ticket: KdsTicket) {
         ZonedDateTime.parse(sf).toInstant().toEpochMilli()
     }.getOrNull() ?: return
 
-    val diffMin = (scheduledMs - nowMs) / 60_000
-
-    // Sformatuj godzinę realizacji w lokalnej strefie czasowej urządzenia (HH:mm)
+    // Czas realizacji (np. "12:00")
     val scheduledTime = runCatching {
         ZonedDateTime.parse(sf)
             .withZoneSameInstant(java.time.ZoneId.systemDefault())
@@ -90,12 +106,36 @@ private fun ScheduledBanner(ticket: KdsTicket) {
             .let { "%02d:%02d".format(it.hour, it.minute) }
     }.getOrElse { sf }
 
+    // Dobierz prepTime na podstawie typu zamówienia
+    val prepMin = when (ticket.orderType?.lowercase()) {
+        "delivery" -> prepTimeDeliveryMin
+        else       -> prepTimePickupMin   // pickup, dine_in, null → domyślnie pickup
+    }
+
+    // Godzina "zacznij gotować" = scheduledFor - prepTime
+    val startCookMs = scheduledMs - prepMin * 60_000L
+    val startCookTime = runCatching {
+        java.time.Instant.ofEpochMilli(startCookMs)
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalTime()
+            .let { "%02d:%02d".format(it.hour, it.minute) }
+    }.getOrElse { "" }
+
+    val diffMin        = (scheduledMs - nowMs) / 60_000       // do godziny realizacji
+    val diffCookMin    = (startCookMs - nowMs) / 60_000       // do czasu gotowania
+
     val (bannerColor, countdownText) = when {
-        diffMin > 120 -> ScheduledColor to "za ${diffMin / 60}h ${diffMin % 60}min"
-        diffMin > 60  -> Color(0xFFE65100) to "za ${diffMin / 60}h ${diffMin % 60}min"  // zbliża się
-        diffMin > 0   -> SlaRed to "za ${diffMin}min — zacznij gotować!"
-        diffMin > -10 -> SlaRed to "CZAS ZACZĄĆ!"
-        else          -> SlaGray to "spóźnione ${-diffMin}min"
+        diffMin <= 0     -> SlaRed         to "🔴 SPÓŹNIONE o ${kotlin.math.abs(diffMin)}min! (na $scheduledTime)"  // po czasie — czerwony alarm
+        diffCookMin > 60 -> ScheduledColor to "Zacznij gotować o $startCookTime"                                    // daleko — fiolet
+        diffCookMin > 0  -> SlaYellow      to "⏰ Zacznij gotować o $startCookTime (za ${diffCookMin}min!)"         // za chwilę — żółty
+        else             -> Color(0xFFE65100) to "🔥 ZACZNIJ GOTOWAĆ TERAZ! (na $scheduledTime)"                    // czas prepTime minął — pomarańcz
+    }
+
+    val orderTypeLabel = when (ticket.orderType?.lowercase()) {
+        "delivery" -> "🚗 Dostawa"
+        "pickup"   -> "🏠 Odbiór osobisty"
+        "dine_in"  -> "🍽 Na miejscu"
+        else       -> null
     }
 
     Surface(
@@ -103,30 +143,45 @@ private fun ScheduledBanner(ticket: KdsTicket) {
         shape    = RoundedCornerShape(6.dp),
         color    = bannerColor.copy(alpha = 0.12f)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Schedule,
-                    contentDescription = null,
-                    tint   = bannerColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(6.dp))
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            // Wiersz 1: ikona + godzina realizacji + typ zamówienia
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier              = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint     = bannerColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text  = "Zaplanowane na $scheduledTime",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = bannerColor
+                    )
+                }
+//                if (orderTypeLabel != null) {
+//                    Text(
+//                        text  = orderTypeLabel,
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = bannerColor.copy(alpha = 0.8f)
+//                    )
+//                }
+            }
+            // Wiersz 2: kiedy zacząć gotować
+            if (countdownText.isNotEmpty()) {
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    text  = "Zaplanowane na $scheduledTime",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = bannerColor
+                    text     = countdownText,
+                    style    = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color    = bannerColor,
+                    modifier = Modifier.padding(start = 20.dp)
                 )
             }
-            Text(
-                text  = countdownText,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = bannerColor
-            )
         }
     }
 }
@@ -140,6 +195,15 @@ private fun ScheduledBanner(ticket: KdsTicket) {
 @Composable
 fun KdsTicketCard(
     entry: KdsTicketEntry,
+    queueMode: Boolean = false,
+    isFocused: Boolean = false,
+    prepTimePickupMin: Int = 30,
+    prepTimeDeliveryMin: Int = 60,
+    cancelEnabled: Boolean = false,
+    showNotes: Boolean = true,
+    headerTapMode: Boolean = false,
+    excludedKeywords: List<String> = emptyList(),
+    isInFlight: Boolean = false,
     onAck: () -> Unit,
     onStart: () -> Unit,
     onReady: () -> Unit,
@@ -150,40 +214,129 @@ fun KdsTicketCard(
     modifier: Modifier = Modifier
 ) {
     val ticket = entry.ticket
-    val items  = entry.items.sortedBy { it.sequence }
+    val items = remember(entry.items, excludedKeywords) {
+        entry.items
+            .filter { item ->
+                if (excludedKeywords.isEmpty()) return@filter true
+                val nameLower = item.displayName.trim().lowercase()
+                excludedKeywords.none { keyword -> nameLower.contains(keyword) }
+            }
+            .sortedBy { it.sequence }
+    }
 
-    // Czy za wcześnie na gotowanie (> 30 min do zaplanowanej godziny)
     val isFuture = ticket.isScheduledFuture()
 
+    // Kolor paska stanu po lewej stronie — bardzo wyraźny
+    val stateAccentColor = when {
+        isFocused                           -> Color(0xFFFFCA28)  // złoty — fokus HID
+        isInFlight                          -> Color(0xFF90A4AE)  // szary — w toku
+        ticket.state == "READY"             -> Color(0xFF1565C0)  // niebieski — gotowe, czeka na wydanie
+        ticket.state == "IN_PROGRESS"       -> Color(0xFFF9A825)  // żółty — w przygotowaniu
+        ticket.state == "ACKED"             -> Color(0xFF2E7D32)  // zielony — przyjęte
+        ticket.state == "NEW"               -> Color(0xFFE65100)  // pomarańczowy — nowe
+        isFuture                            -> ScheduledColor     // fiolet — zaplanowane daleko
+        else                                -> slaColor(ticket)   // SLA-based
+    }
+
+    // Tło nagłówka — subtelne, czytelne
+    val headerBg = when {
+        isInFlight                    -> Color(0xFF37474F).copy(alpha = 0.6f)
+        ticket.state == "READY"       -> Color(0xFF1565C0).copy(alpha = 0.18f)
+        ticket.state == "IN_PROGRESS" -> Color(0xFFF9A825).copy(alpha = 0.12f)
+        ticket.state == "ACKED"       -> Color(0xFF2E7D32).copy(alpha = 0.10f)
+        ticket.state == "NEW"         -> Color(0xFFE65100).copy(alpha = 0.10f)
+        else                          -> Color.Transparent
+    }
+
     val borderColor by animateColorAsState(
-        targetValue = if (isFuture) ScheduledColor else slaColor(ticket),
-        animationSpec = tween(600),
-        label = "sla_border"
+        targetValue   = stateAccentColor,
+        animationSpec = tween(300),
+        label         = "state_border"
     )
 
     Card(
         modifier = modifier
-            .width(320.dp)
-            .border(width = if (isFuture) 2.dp else 3.dp, color = borderColor, shape = RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isFuture) 1.dp else 4.dp),
+            .fillMaxWidth()
+            .border(width = 1.dp, color = KdsCardBorder, shape = RoundedCornerShape(0.dp)),
+        shape     = RoundedCornerShape(0.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isFocused) 12.dp else if (isFuture) 2.dp else 4.dp
+        ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isFuture)
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-            else
-                MaterialTheme.colorScheme.surface
+            containerColor = when {
+                isFocused -> KdsCard.copy(alpha = 0.95f)
+                isFuture  -> KdsCard.copy(alpha = 0.75f)
+                else      -> KdsCard
+            }
         )
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        // Główny Row: pionowy pasek stanu + treść karty
+        Row(modifier = Modifier.fillMaxWidth()) {
+
+            // ─── Pionowy pasek stanu (lewy bok karty) ─────────────────
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .fillMaxHeight()
+                    .background(borderColor)
+            )
+
+            // ─── Treść karty ───────────────────────────────────────────
+            Column(modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp, vertical = 10.dp)
+            ) {
 
             // ─── Baner zaplanowanego zamówienia (jeśli dotyczy) ───────
             if (ticket.isScheduled()) {
-                ScheduledBanner(ticket = ticket)
+                ScheduledBanner(
+                    ticket              = ticket,
+                    prepTimePickupMin   = prepTimePickupMin,
+                    prepTimeDeliveryMin = prepTimeDeliveryMin
+                )
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // ─── Nagłówek ──────────────────────────────────────────────
-            TicketHeader(ticket = ticket)
+            // ─── Nagłówek — klikalny w trybie tap, zwykły w trybie przycisków ──
+            val tapAction: (() -> Unit)? = if (headerTapMode && !isInFlight) nextStateAction(
+                state    = ticket.state,
+                isFuture = isFuture,
+                onAck    = onAck,
+                onStart  = onStart,
+                onReady  = onReady,
+                onHandoff = onHandoff
+            ) else null
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(headerBg)
+                    .then(
+                        if (tapAction != null) Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication        = null,
+                            onClick           = tapAction
+                        ) else Modifier
+                    )
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Column {
+                    TicketHeader(ticket = ticket, isInFlight = isInFlight)
+                    if (headerTapMode && tapAction != null) {
+                        Spacer(Modifier.height(4.dp))
+                        TapHint(state = ticket.state)
+                    }
+                    if (isInFlight) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text  = "⏳ Przetwarzanie…",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KdsTextMuted
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -196,55 +349,117 @@ fun KdsTicketCard(
             }
 
             // ─── Lista pozycji ─────────────────────────────────────────
-            items.forEach { item ->
-                KdsItemRow(
-                    item = item,
-                    onStartItem = { onStartItem(item.id) },
-                    onReadyItem = { onReadyItem(item.id) }
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+            Column {
+                items.forEach { item ->
+                    KdsItemRow(
+                        item        = item,
+                        showNotes   = showNotes,
+                        onStartItem = { onStartItem(item.id) },
+                        onReadyItem = { onReadyItem(item.id) }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ─── Przyciski akcji (zablokowane gdy za wcześnie) ─────────
-            TicketActions(
-                ticket    = ticket,
-                isFuture  = isFuture,
-                onAck     = onAck,
-                onStart   = onStart,
-                onReady   = onReady,
-                onHandoff = onHandoff,
-                onCancel  = onCancel
-            )
-        }
+            // ─── Przyciski akcji — zablokowane gdy isInFlight ──────────
+            val actionsEnabled = !isInFlight
+            if (!headerTapMode) {
+                TicketActions(
+                    ticket        = ticket,
+                    queueMode     = queueMode,
+                    isFuture      = isFuture,
+                    cancelEnabled = cancelEnabled,
+                    enabled       = actionsEnabled,
+                    onAck         = onAck,
+                    onStart       = onStart,
+                    onReady       = onReady,
+                    onHandoff     = onHandoff,
+                    onCancel      = onCancel
+                )
+            } else if (cancelEnabled) {
+                OutlinedButton(
+                    onClick  = onCancel,
+                    enabled  = actionsEnabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
+                ) {
+                    Icon(Icons.Default.Cancel, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("ANULUJ")
+                }
+            }
+        } // Column treści
+        } // Row główny
     }
 }
+
 
 // ─── Nagłówek karty ──────────────────────────────────────────────────────────
 
 @Composable
-private fun TicketHeader(ticket: KdsTicket) {
+private fun TicketHeader(ticket: KdsTicket, isInFlight: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
         Column {
-            // Numer zamówienia
-            Text(
-                text = ticket.orderNumber,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                fontSize = 22.sp
-            )
-            // Stan ticketu
-            Text(
-                text = stateLabel(ticket.state),
-                style = MaterialTheme.typography.labelMedium,
-                color = stateColor(ticket.state)
-            )
+            // Główny numer — kdsTicketNumber gdy API zwraca (np. "W-003"), inaczej orderNumber
+            if (ticket.kdsTicketNumber != null) {
+                Text(
+                    text     = ticket.kdsTicketNumber,
+                    style    = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    fontSize = 26.sp,
+                    color    = KdsTextPrimary
+                )
+                // orderNumber jako mały podpis (do weryfikacji z kasą)
+                Text(
+                    text  = ticket.orderNumber,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = KdsTextMuted
+                )
+            } else {
+                // Fallback — API jeszcze nie zwraca kdsTicketNumber
+                Text(
+                    text     = ticket.orderNumber,
+                    style    = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    fontSize = 22.sp,
+                    color    = KdsTextPrimary
+                )
+            }
+            // Stan ticketu + typ zamówienia w jednym wierszu
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text  = stateLabel(ticket.state),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = stateColor(ticket.state)
+                )
+                val orderTypeLabel = when (ticket.orderType?.lowercase()) {
+                    "delivery" -> "🚗 Dostawa"
+                    "pickup"   -> "🏠 Wynos"
+                    "dine_in"  -> "🍽 Na miejscu"
+                    else       -> null
+                }
+                if (orderTypeLabel != null) {
+                    Text(
+                        text  = "·",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = KdsTextMuted
+                    )
+                    Text(
+                        text  = orderTypeLabel,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                        color = KdsTextSecondary
+                    )
+                }
+            }
         }
 
         Column(horizontalAlignment = Alignment.End) {
@@ -282,41 +497,55 @@ private fun RushChip() {
 
 @Composable
 private fun SlaTimer(ticket: KdsTicket) {
-    // Odświeżamy co sekundę
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_000)
-            nowMs = System.currentTimeMillis()
-        }
+        while (true) { delay(1_000); nowMs = System.currentTimeMillis() }
     }
 
-    val slaMs = ticket.slaTargetAt?.let {
-        runCatching { ZonedDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
-    } ?: return
+    // Dla zaplanowanych — liczymy do scheduledFor, nie do slaTargetAt
+    // (slaTargetAt to ~15 min od złożenia, dla zaplanowanych jest bez sensu)
+    val targetMs: Long = if (ticket.isScheduled()) {
+        ticket.scheduledFor?.let {
+            runCatching { ZonedDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
+        } ?: return
+    } else {
+        ticket.slaTargetAt?.let {
+            runCatching { ZonedDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
+        } ?: return
+    }
 
-    val diffMs  = slaMs - nowMs
+    val diffMs  = targetMs - nowMs
     val diffSec = diffMs / 1_000
     val absSec  = kotlin.math.abs(diffSec)
     val mm      = absSec / 60
     val ss      = absSec % 60
     val sign    = if (diffSec < 0) "-" else ""
-    val color   = slaColor(ticket)
+
+    // Dla zaplanowanych — kolor bazuje na scheduledFor, nie na slaTargetAt
+    val color = if (ticket.isScheduled()) scheduledTimerColor(diffMs) else slaColor(ticket)
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = Icons.Default.Schedule,
+            imageVector        = Icons.Default.Schedule,
             contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(16.dp)
+            tint               = color,
+            modifier           = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = "%s%02d:%02d".format(sign, mm, ss),
+            text  = "%s%02d:%02d".format(sign, mm, ss),
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
             color = color
         )
     }
+}
+
+/** Kolor timera dla zamówień zaplanowanych — bazuje na scheduledFor, nie slaTargetAt */
+private fun scheduledTimerColor(msUntilScheduled: Long): Color = when {
+    msUntilScheduled > 60 * 60_000L -> ScheduledColor  // > 60 min  — fiolet
+    msUntilScheduled > 10 * 60_000L -> SlaGreen        // 10–60 min — zielony
+    msUntilScheduled > 0            -> SlaYellow        // 0–10 min  — żółty (czas gotować!)
+    else                            -> SlaRed           // po czasie — czerwony (spóźnienie!)
 }
 
 // ─── Notatka ─────────────────────────────────────────────────────────────────
@@ -341,13 +570,37 @@ private fun NoteChip(note: String) {
 @Composable
 private fun KdsItemRow(
     item: KdsTicketItem,
+    showNotes: Boolean = true,
     onStartItem: () -> Unit,
     onReadyItem: () -> Unit
 ) {
     val isDone = item.state == "READY" || item.state == "SERVED"
 
+    // Kliknięcie całego wiersza wykonuje akcję w zależności od stanu pozycji
+    val rowAction: (() -> Unit)? = when (item.state) {
+        "QUEUED"  -> onStartItem
+        "COOKING" -> onReadyItem
+        else      -> null
+    }
+
+    // Kolor tła wiersza zależny od stanu — subtelna wskazówka dla kucharza
+    val rowBg = when (item.state) {
+        "COOKING" -> Color(0xFF1565C0).copy(alpha = 0.08f)
+        "READY"   -> Color(0xFF2E7D32).copy(alpha = 0.08f)
+        else      -> Color.Transparent
+    }
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(rowBg)
+            .then(
+                if (rowAction != null)
+                    Modifier.clickable(onClick = rowAction)
+                else Modifier
+            )
+            .padding(vertical = 4.dp, horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Ilość
@@ -355,76 +608,59 @@ private fun KdsItemRow(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(KdsCardBorder),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "×${item.qty}",
+                text  = "×${item.qty}",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = KdsTextPrimary
             )
         }
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Nazwa + notatki
+        // Nazwa + notatki (opcjonalnie)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.displayName,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (isDone) FontWeight.Normal else FontWeight.Medium,
+                    fontWeight     = if (isDone) FontWeight.Normal else FontWeight.Medium,
                     textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
                 ),
-                color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.onSurface
+                color = if (isDone) KdsTextMuted else KdsTextPrimary
             )
-            if (item.notes.isNotEmpty()) {
+            if (showNotes && item.notes.isNotEmpty()) {
                 Text(
-                    text = item.notes.joinToString(" · "),
+                    text  = item.notes.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = KdsTextSecondary
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(4.dp))
-
-        // Przycisk akcji pozycji
+        // Mały wskaźnik stanu (bez ikony przycisku — zastąpiony kliknięciem wiersza)
         when (item.state) {
-            "QUEUED" -> {
-                ItemActionButton(label = "▶", tint = Color(0xFF1565C0), onClick = onStartItem)
-            }
             "COOKING" -> {
-                ItemActionButton(label = "✓", tint = Color(0xFF2E7D32), onClick = onReadyItem)
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFF1565C0))
+                )
             }
             "READY" -> {
+                Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = Color(0xFF2E7D32),
-                    modifier = Modifier.size(24.dp)
+                    tint     = Color(0xFF2E7D32),
+                    modifier = Modifier.size(18.dp)
                 )
             }
-            else -> { /* SERVED / VOID - brak przycisku */ }
+            else -> { /* QUEUED / SERVED / VOID - brak wskaźnika */ }
         }
-    }
-}
-
-@Composable
-private fun ItemActionButton(label: String, tint: Color, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = tint.copy(alpha = 0.12f),
-        onClick = onClick
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = tint
-            )
-        )
     }
 }
 
@@ -433,7 +669,10 @@ private fun ItemActionButton(label: String, tint: Color, onClick: () -> Unit) {
 @Composable
 private fun TicketActions(
     ticket: KdsTicket,
+    queueMode: Boolean = false,
     isFuture: Boolean = false,
+    cancelEnabled: Boolean = false,
+    enabled: Boolean = true,
     onAck: () -> Unit,
     onStart: () -> Unit,
     onReady: () -> Unit,
@@ -441,82 +680,121 @@ private fun TicketActions(
     onCancel: () -> Unit
 ) {
     // Zaplanowane zbyt daleko — blokujemy START, tylko ACK i CANCEL dostępne
-    if (isFuture && ticket.state in listOf("NEW", "ACKED")) {
+    if (isFuture && ticket.state in listOf("NEW", "ACKED", "ACTIVE")) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape    = RoundedCornerShape(8.dp),
                 color    = ScheduledColor.copy(alpha = 0.08f)
             ) {
-                Row(
-                    modifier = Modifier.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint     = ScheduledColor,
-                        modifier = Modifier.size(18.dp)
-                    )
+                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Schedule, null, tint = ScheduledColor, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        text  = "Poczekaj na czas realizacji",
-                        style = MaterialTheme.typography.bodySmall.copy(color = ScheduledColor)
-                    )
+                    Text("Poczekaj na czas realizacji", style = MaterialTheme.typography.bodySmall.copy(color = ScheduledColor))
                 }
             }
-            if (ticket.state == "NEW") {
-                OutlinedButton(
-                    onClick = onAck,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("PRZYJMIJ (zaplanowane)") }
+            if (ticket.state == "NEW" || ticket.state == "ACTIVE") {
+                OutlinedButton(onClick = onAck, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                    Text("PRZYJMIJ (zaplanowane)")
+                }
             }
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
-            ) { Text("ANULUJ") }
+            if (cancelEnabled) {
+                OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
+                ) { Text("ANULUJ") }
+            }
         }
         return
     }
 
+    // ─── TRYB PROSTY: tylko GOTOWE + (opcjonalnie) ANULUJ ────────────────
+    if (!queueMode) {
+        when (ticket.state) {
+            "NEW", "ACTIVE", "ACKED", "IN_PROGRESS" -> {
+                Button(
+                    onClick  = onReady,
+                    enabled  = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                ) {
+                    Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("GOTOWE", style = MaterialTheme.typography.titleMedium)
+                }
+                if (cancelEnabled) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedButton(
+                        onClick  = onCancel,
+                        enabled  = enabled,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
+                    ) {
+                        Icon(Icons.Default.Cancel, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ANULUJ")
+                    }
+                }
+            }
+            "READY" -> {
+                Button(
+                    onClick  = onHandoff,
+                    enabled  = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+                ) {
+                    Icon(Icons.Default.LocalShipping, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("WYDAJ")
+                }
+            }
+            "HANDED_OFF" -> HandedOffBadge()
+            "CANCELLED"  -> CancelledBadge()
+        }
+        return
+    }
+
+    // ─── TRYB KOLEJKOWY: pełny workflow ──────────────────────────────────
     when (ticket.state) {
         "NEW" -> {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = onAck,
+                    onClick  = onAck,
+                    enabled  = enabled,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
                 ) {
                     Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("PRZYJMIJ")
                 }
                 Button(
-                    onClick = onStart,
+                    onClick  = onStart,
+                    enabled  = enabled,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                    colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
                     Icon(Icons.Default.FastForward, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("START")
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
-            ) {
-                Icon(Icons.Default.Cancel, null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("ANULUJ")
+            if (cancelEnabled) {
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = onCancel, enabled = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
+                ) {
+                    Icon(Icons.Default.Cancel, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("ANULUJ")
+                }
             }
         }
 
         "ACKED" -> {
             Button(
-                onClick = onStart,
+                onClick = onStart, enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
             ) {
@@ -524,39 +802,35 @@ private fun TicketActions(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("ZACZNIJ PRZYGOTOWANIE")
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
-            ) {
-                Text("ANULUJ")
+            if (cancelEnabled) {
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
+                ) { Text("ANULUJ") }
             }
         }
 
         "IN_PROGRESS" -> {
             Button(
-                onClick = onReady,
+                onClick = onReady, enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF9A825))
             ) {
                 Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("GOTOWE", color = Color.Black)
+                Text("GOTOWE", color = if (enabled) Color.Black else Color.Gray)
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
-            ) {
-                Text("ANULUJ")
+            if (cancelEnabled) {
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SlaRed)
+                ) { Text("ANULUJ") }
             }
         }
 
         "READY" -> {
             Button(
-                onClick = onHandoff,
+                onClick = onHandoff, enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
             ) {
@@ -566,41 +840,96 @@ private fun TicketActions(
             }
         }
 
-        "HANDED_OFF" -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = SlaBlue.copy(alpha = 0.12f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.DoneAll, null, tint = SlaBlue)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Wydane", color = SlaBlue, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
 
-        "CANCELLED" -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = SlaGray.copy(alpha = 0.12f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.Cancel, null, tint = SlaGray)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Anulowane", color = SlaGray, fontWeight = FontWeight.Bold)
-                }
-            }
+        "HANDED_OFF" -> HandedOffBadge()
+        "CANCELLED"  -> CancelledBadge()
+    }
+}
+
+@Composable
+private fun HandedOffBadge() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(8.dp),
+        color    = KdsSlaBlue.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier              = Modifier.padding(12.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.DoneAll, null, tint = KdsSlaBlue)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Wydane", color = KdsSlaBlue, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+private fun CancelledBadge() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(8.dp),
+        color    = KdsSlaGray.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier              = Modifier.padding(12.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.Cancel, null, tint = SlaGray)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Anulowane", color = SlaGray, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// ─── Tap mode helpers ────────────────────────────────────────────────────────
+
+/** Zwraca lambdę akcji dla kolejnego stanu lub null gdy brak przejścia */
+private fun nextStateAction(
+    state: String,
+    isFuture: Boolean,
+    onAck: () -> Unit,
+    onStart: () -> Unit,
+    onReady: () -> Unit,
+    onHandoff: () -> Unit
+): (() -> Unit)? = when {
+    isFuture                -> onAck       // zaplanowane — tylko przyjmij
+    state == "NEW"          -> onReady     // NEW → od razu READY (najprostsze)
+    state == "ACKED"        -> onReady
+    state == "IN_PROGRESS"  -> onReady
+    state == "READY"        -> onHandoff
+    else                    -> null
+}
+
+/** Kolor podpowiedzi następnego stanu — pasuje do koloru SLA/stanu */
+private fun nextStateColor(state: String): Color = when (state) {
+    "NEW"         -> KdsSlaGreen
+    "ACKED"       -> KdsSlaGreen
+    "IN_PROGRESS" -> KdsSlaYellow
+    "READY"       -> KdsSlaBlue
+    else          -> KdsSlaGray
+}
+
+/** Mała podpowiedź "Dotknij → GOTOWE" pod nagłówkiem */
+@Composable
+private fun TapHint(state: String) {
+    val label = when (state) {
+        "NEW", "ACKED", "IN_PROGRESS" -> "Dotknij → GOTOWE"
+        "READY"                       -> "Dotknij → WYDAJ"
+        else                          -> return
+    }
+    Row(
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = nextStateColor(state).copy(alpha = 0.7f),
+            letterSpacing = 0.5.sp
+        )
     }
 }
 
@@ -611,16 +940,25 @@ private fun slaColor(ticket: KdsTicket): Color {
         "CANCELLED"  -> SlaGray
         "HANDED_OFF" -> SlaBlue
         else -> {
+            // Dla zaplanowanych — kolor bazuje na scheduledFor, nie slaTargetAt
+            // (slaTargetAt to ~15 min od złożenia, dla zaplanowanych jest nieistotny)
+            if (ticket.isScheduled()) {
+                val scheduledMs = ticket.scheduledFor?.let {
+                    runCatching { ZonedDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
+                } ?: return ScheduledColor
+                return scheduledTimerColor(scheduledMs - System.currentTimeMillis())
+            }
+
+            // Zwykłe zamówienia — standardowy SLA
             val slaMs = ticket.slaTargetAt?.let {
                 runCatching { ZonedDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
             } ?: return SlaGreen
 
-            val nowMs = System.currentTimeMillis()
-            val diffMs = slaMs - nowMs
+            val diffMs = slaMs - System.currentTimeMillis()
             when {
-                diffMs >= 2 * 60 * 1_000 -> SlaGreen   // > 2 min  → zielony
-                diffMs > 0               -> SlaYellow  // 0..2 min → żółty
-                else                     -> SlaRed      // < 0      → czerwony
+                diffMs >= 2 * 60_000L -> SlaGreen
+                diffMs > 0            -> SlaYellow
+                else                  -> SlaRed
             }
         }
     }
@@ -637,13 +975,272 @@ private fun stateLabel(state: String): String = when (state) {
 }
 
 private fun stateColor(state: String): Color = when (state) {
-    "NEW"         -> Color(0xFF1565C0)
-    "ACKED"       -> Color(0xFF6A1B9A)
-    "IN_PROGRESS" -> Color(0xFFF9A825)
-    "READY"       -> Color(0xFF2E7D32)
-    "HANDED_OFF"  -> SlaBlue
-    "CANCELLED"   -> SlaGray
-    else           -> Color.Gray
+    "NEW"         -> Color(0xFF42A5F5)
+    "ACKED"       -> KdsScheduled
+    "IN_PROGRESS" -> KdsSlaYellow
+    "READY"       -> KdsSlaGreen
+    "HANDED_OFF"  -> KdsSlaBlue
+    "CANCELLED"   -> KdsSlaGray
+    else           -> KdsTextMuted
+}
+
+// ─── KOMPAKTOWY BLOCZEK KUCHENNY ─────────────────────────────────────────────
+//
+//  Uproszczony widok dla kuchni — maksymalnie dużo informacji w małej przestrzeni.
+//  Nagłówek:  [NR WEW] [NR ZEW] [SOURCE]        [TYP]
+//  Pozycje:   ×2  Hosomaki Tuna
+//             ×1  Edamame
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun KdsCompactTicketCard(
+    entry:            KdsTicketEntry,
+    excludedKeywords: List<String>  = emptyList(),
+    onStart:          () -> Unit    = {},
+    onReady:          () -> Unit    = {},
+    onHandoff:        () -> Unit    = {},
+    onStartItem:      (String) -> Unit = {},
+    onReadyItem:      (String) -> Unit = {},
+    modifier:         Modifier      = Modifier
+) {
+    val ticket = entry.ticket
+    val items = remember(entry.items, excludedKeywords) {
+        entry.items
+            .filter { item ->
+                if (excludedKeywords.isEmpty()) return@filter true
+                val n = item.displayName.trim().lowercase()
+                excludedKeywords.none { kw -> n.contains(kw) }
+            }
+            .sortedBy { it.sequence }
+    }
+
+    val borderColor = slaColor(ticket)
+
+    // Kolor i ikona typu zamówienia
+    val (orderTypeIcon, orderTypeColor) = when (ticket.orderType?.lowercase()) {
+        "delivery" -> "🚗" to Color(0xFF42A5F5)
+        "pickup"   -> "🏠" to KdsSlaGreen
+        "dine_in"  -> "🍽" to Color(0xFFAB47BC)
+        else       -> "📋" to KdsTextMuted
+    }
+    val orderTypeLabel = when (ticket.orderType?.lowercase()) {
+        "delivery" -> "DOSTAWA"
+        "pickup"   -> "WYNOS"
+        "dine_in"  -> "MIEJSCE"
+        else       -> ticket.orderType?.uppercase() ?: "—"
+    }
+
+    // Etykieta source
+    val sourceLabel = when (ticket.source?.uppercase()) {
+        "CHECKOUT"   -> "WWW"
+        "PORTAL"     -> "PORTAL"
+        "WOOCOMMERCE"-> "WOO"
+        "POS"        -> "POS"
+        null         -> null
+        else         -> ticket.source.uppercase().take(6)
+    }
+
+    Card(
+        modifier  = modifier
+            .fillMaxWidth()
+            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(4.dp)),
+        shape     = RoundedCornerShape(4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors    = CardDefaults.cardColors(containerColor = KdsCard)
+    ) {
+        Column {
+
+            // ── Nagłówek ──────────────────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(orderTypeColor.copy(alpha = 0.10f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Lewa część: numer wew. + numer zew. + source
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Numer wewnętrzny KDS (np. W-003) — duży, bold
+                    Text(
+                        text  = ticket.kdsTicketNumber ?: ticket.orderNumber,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize   = 18.sp
+                        ),
+                        color = KdsTextPrimary
+                    )
+                    // Numer zewnętrzny (orderNumber) — tylko gdy kdsTicketNumber jest dostępny
+                    if (ticket.kdsTicketNumber != null) {
+                        Text(
+                            text  = "#${ticket.orderNumber}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KdsTextMuted
+                        )
+                    }
+                    // Source chip
+                    if (sourceLabel != null) {
+                        Surface(
+                            shape = RoundedCornerShape(3.dp),
+                            color = KdsCardBorder
+                        ) {
+                            Text(
+                                text     = sourceLabel,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                style    = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize   = 9.sp
+                                ),
+                                color = KdsTextSecondary
+                            )
+                        }
+                    }
+                }
+
+                // Prawa część: ikona + typ zamówienia
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(text = orderTypeIcon, fontSize = 13.sp)
+                    Text(
+                        text  = orderTypeLabel,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 11.sp
+                        ),
+                        color = orderTypeColor
+                    )
+                }
+            }
+
+            HorizontalDivider(color = borderColor.copy(alpha = 0.3f), thickness = 1.dp)
+
+            // ── Lista pozycji ─────────────────────────────────────────
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                items.forEach { item ->
+                    CompactItemRow(
+                        item        = item,
+                        onStartItem = { onStartItem(item.id) },
+                        onReadyItem = { onReadyItem(item.id) }
+                    )
+                }
+            }
+
+            // ── Akcja (tylko w trybie gotowe/wydaj) ───────────────────
+            val actionLabel = when (ticket.state) {
+                "ACKED", "NEW"    -> null   // akcja przez tap pozycji
+                "IN_PROGRESS"     -> "GOTOWE"
+                "READY"           -> "WYDAJ"
+                else              -> null
+            }
+            val actionColor = when (ticket.state) {
+                "IN_PROGRESS" -> KdsSlaGreen
+                "READY"       -> KdsSlaBlue
+                else          -> KdsSlaGray
+            }
+            val actionFn: (() -> Unit)? = when (ticket.state) {
+                "IN_PROGRESS" -> onReady
+                "READY"       -> onHandoff
+                else          -> null
+            }
+
+            if (actionLabel != null && actionFn != null) {
+                HorizontalDivider(color = actionColor.copy(alpha = 0.15f), thickness = 1.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = actionFn)
+                        .background(actionColor.copy(alpha = 0.08f))
+                        .padding(vertical = 7.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text  = actionLabel,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 12.sp
+                        ),
+                        color = actionColor
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ─── Wiersz pozycji w widoku kompaktowym ─────────────────────────────────────
+
+@Composable
+private fun CompactItemRow(
+    item:        KdsTicketItem,
+    onStartItem: () -> Unit,
+    onReadyItem: () -> Unit
+) {
+    val isDone = item.state == "READY" || item.state == "SERVED"
+    val rowAction: (() -> Unit)? = when (item.state) {
+        "QUEUED"  -> onStartItem
+        "COOKING" -> onReadyItem
+        else      -> null
+    }
+    val rowBg = when (item.state) {
+        "COOKING" -> Color(0xFF1565C0).copy(alpha = 0.07f)
+        "READY"   -> Color(0xFF2E7D32).copy(alpha = 0.07f)
+        else      -> Color.Transparent
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(3.dp))
+            .background(rowBg)
+            .then(if (rowAction != null) Modifier.clickable(onClick = rowAction) else Modifier)
+            .padding(vertical = 3.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Ilość — kompaktowy badge
+        Text(
+            text  = "×${item.qty}",
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize   = 13.sp
+            ),
+            color = if (isDone) KdsTextMuted else KdsSlaGreen
+        )
+        // Nazwa
+        Text(
+            text     = item.displayName,
+            style    = MaterialTheme.typography.bodySmall.copy(
+                fontWeight     = if (isDone) FontWeight.Normal else FontWeight.Medium,
+                textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None,
+                fontSize       = 13.sp
+            ),
+            color    = if (isDone) KdsTextMuted else KdsTextPrimary,
+            modifier = Modifier.weight(1f),
+            maxLines = 2
+        )
+        // Mały wskaźnik stanu
+        when (item.state) {
+            "COOKING" -> Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF1565C0))
+            )
+            "READY" -> Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint     = KdsSlaGreen,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
 }
 
 

@@ -344,7 +344,8 @@
     <string name="unknown_error">Wystąpił nieznany błąd</string>
 
     <!-- Notification sound names -->
-    <string name="sound_name_default">Domyślny (iPhone)</string>
+    <string name="sound_name_default1">Domyślny</string>
+    <string name="sound_name_default">iPhone</string>
     <string name="sound_name_soft_chime">Miękki dzwonek</string>
     <string name="sound_name_classic_bell">Klasyczny dzwon</string>
 

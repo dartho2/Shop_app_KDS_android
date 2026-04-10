@@ -351,7 +351,8 @@
     <string name="order_alarm_boot_title">Notification starting…</string>
 
     <!-- Sound names -->
-    <string name="sound_name_default">Default (iPhone)</string>
+    <string name="sound_name_default1">Default</string>
+    <string name="sound_name_default">iPhone</string>
     <string name="sound_name_soft_chime">Soft chime</string>
     <string name="sound_name_classic_bell">Classic bell</string>
 

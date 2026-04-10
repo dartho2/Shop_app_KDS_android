@@ -6,6 +6,7 @@ import android.media.MediaPlayer
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,11 +26,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,10 +49,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -61,8 +73,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.itsorderkds.R
 import com.itsorderkds.data.preferences.AppPreferencesManager
+import com.itsorderkds.notifications.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -200,99 +212,118 @@ fun SettingsItem(
 }
 
 
-// --- Ekran ustawień powiadomień (wybór dźwięku) ---
+// --- Ekran ustawień powiadomień (wybór dźwięku KDS) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationSettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: NotificationSettingsViewModel = hiltViewModel()
 ) {
-    val sounds = viewModel.availableSounds
-    val context = LocalContext.current
-    var previewPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-    var previewJob by remember { mutableStateOf<Job?>(null) }
+    val sounds      = viewModel.availableSounds
+    val context     = LocalContext.current
     val selectedUri by viewModel.selectedUri.collectAsStateWithLifecycle()
-    val isMuted by viewModel.isMutedFlow.collectAsStateWithLifecycle()
-    val currentTypeIndex by viewModel.currentTypeIndexFlow.collectAsStateWithLifecycle()
-    val currentType = viewModel.types[currentTypeIndex]
+    val isMuted     by viewModel.isMutedFlow.collectAsStateWithLifecycle()
 
-    // Czyszczenie MediaPlayera przy opuszczaniu ekranu
+    var previewPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+
     DisposableEffect(Unit) {
         onDispose {
-            previewPlayer?.let { p ->
-                try { p.stop(); p.release() } catch (_: Exception) {}
-            }
+            previewPlayer?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
         }
     }
 
-    Column {
-        TabRow(selectedTabIndex = currentTypeIndex) {
-            viewModel.types.forEachIndexed { idx, type ->
-                Tab(
-                    selected = currentTypeIndex == idx,
-                    onClick = { viewModel.selectType(idx) },
-                    text = {
-                        Text(
-                            when (type) {
-                                NotificationType.ORDER_ALARM -> stringResource(R.string.order_alarm_title)
-                                NotificationType.ROUTE_UPDATED -> stringResource(R.string.new_route_notification_title)
-                                NotificationType.GENERAL -> stringResource(R.string.notification_channel_general_id)
-                            }
-                        )
-                    }
-                )
-            }
-        }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(stringResource(R.string.order_alarm_mute), modifier = Modifier.weight(1f))
-            Switch(
-                checked = isMuted,
-                onCheckedChange = { viewModel.setMuted(it) },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                )
+        // ─── Wyciszenie ──────────────────────────────────────────────────
+        item {
+            Text(
+                text     = "Dźwięk nowego zamówienia KDS",
+                style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color    = MaterialTheme.colorScheme.primary
             )
         }
-        HorizontalDivider()
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(sounds.size) { index ->
-                val sound = sounds[index]
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedUri == sound.uri,
-                        onClick = { viewModel.setNotificationSound(currentType, sound.uri) },
-                        enabled = !isMuted
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Wycisz powiadomienia", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (isMuted) "Nowe zamówienia bez dźwięku"
+                        else "Nowe zamówienia grają wybrany dźwięk",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(text = sound.label, style = MaterialTheme.typography.bodyLarge)
-                        Text(text = sound.uri, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked  = isMuted,
+                    onCheckedChange = { viewModel.setMuted(it) }
+                )
+            }
+            HorizontalDivider()
+        }
+
+        // ─── Wybór dźwięku ───────────────────────────────────────────────
+        item {
+            Text(
+                text     = "Wybierz dźwięk",
+                style    = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                color    = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        items(sounds.size) { index ->
+            val sound      = sounds[index]
+            val isSelected = selectedUri == sound.uri
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !isMuted) {
+                        viewModel.setNotificationSound(sound.uri, context)
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Button(onClick = {
-                        if (isMuted) return@Button
-                        try {
-                            previewJob?.cancel()
-                            previewJob = null
-                            previewPlayer?.let { p ->
-                                try { p.stop(); p.release() } catch (_: Exception) {}
-                            }
-                            previewPlayer = null
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = isSelected,
+                    onClick  = { viewModel.setNotificationSound(sound.uri, context) },
+                    enabled  = !isMuted
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text  = sound.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (isMuted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                else MaterialTheme.colorScheme.onSurface
+                    )
+                    if (isSelected && !isMuted) {
+                        Text(
+                            text  = "Aktywny",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                // Przycisk podglądu dźwięku
+                IconButton(
+                    enabled = !isMuted,
+                    onClick = {
+                        previewPlayer?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
+                        previewPlayer = null
+                        runCatching {
                             val player = MediaPlayer().apply {
                                 setDataSource(context, sound.uri.toUri())
                                 setOnPreparedListener { start() }
@@ -303,14 +334,50 @@ fun NotificationSettingsScreen(
                                 prepareAsync()
                             }
                             previewPlayer = player
-                        } catch (_: Exception) { /* ignoruj preview error */ }
-                    }) { Text(stringResource(R.string.common_ok)) }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Odtwórz podgląd",
+                        tint = if (isMuted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                               else MaterialTheme.colorScheme.primary
+                    )
                 }
-                HorizontalDivider()
+            }
+            HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        }
+
+        // ─── Info o kanale systemowym ────────────────────────────────────
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "ℹ️ Informacja",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Wybrany dźwięk jest odtwarzany bezpośrednio przez aplikację przy każdym nowym zamówieniu — " +
+                        "zmiana działa natychmiast bez potrzeby restartowania aplikacji. " +
+                        "Głośność regulujesz suwakiem powiadomień w systemie Android.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
+
 
 // --- Ekran Głównych Ustawień ---
 @Composable
@@ -318,77 +385,488 @@ fun MainSettingsScreen(
     onNavigateBack: () -> Unit = {},
     viewModel: MainSettingsViewModel = hiltViewModel()
 ) {
-    val kioskModeEnabled by viewModel.kioskModeEnabled.collectAsStateWithLifecycle()
-    val autoRestartEnabled by viewModel.autoRestartEnabled.collectAsStateWithLifecycle()
-    val taskReopenEnabled by viewModel.taskReopenEnabled.collectAsStateWithLifecycle()
+    val kioskModeEnabled           by viewModel.kioskModeEnabled.collectAsStateWithLifecycle()
+    val autoRestartEnabled         by viewModel.autoRestartEnabled.collectAsStateWithLifecycle()
+    val taskReopenEnabled          by viewModel.taskReopenEnabled.collectAsStateWithLifecycle()
+    val kdsQueueMode               by viewModel.kdsQueueMode.collectAsStateWithLifecycle()
+    val kdsAutoPrintOnReady        by viewModel.kdsAutoPrintOnReady.collectAsStateWithLifecycle()
+    val kdsShowScheduled           by viewModel.kdsShowScheduled.collectAsStateWithLifecycle()
+    val kdsRequireReadyConfirm     by viewModel.kdsRequireReadyConfirm.collectAsStateWithLifecycle()
+    val kdsGridColumns             by viewModel.kdsGridColumns.collectAsStateWithLifecycle()
+    val kdsShowProductionSummary   by viewModel.kdsShowProductionSummary.collectAsStateWithLifecycle()
+    val kdsProductionMinQty        by viewModel.kdsProductionMinQty.collectAsStateWithLifecycle()
+    val kdsProductionColumns       by viewModel.kdsProductionColumns.collectAsStateWithLifecycle()
+    val kdsDisplayMode             by viewModel.kdsDisplayMode.collectAsStateWithLifecycle()
+    val kdsFillGaps                by viewModel.kdsFillGaps.collectAsStateWithLifecycle()
+    val kdsPrepTimePickup          by viewModel.kdsPrepTimePickup.collectAsStateWithLifecycle()
+    val kdsPrepTimeDelivery        by viewModel.kdsPrepTimeDelivery.collectAsStateWithLifecycle()
+    val kdsCancelEnabled           by viewModel.kdsCancelEnabled.collectAsStateWithLifecycle()
+    val kdsShowNotes               by viewModel.kdsShowNotes.collectAsStateWithLifecycle()
+    val kdsHeaderTapMode           by viewModel.kdsHeaderTapMode.collectAsStateWithLifecycle()
+    val kdsScheduledActiveWindow   by viewModel.kdsScheduledActiveWindow.collectAsStateWithLifecycle()
+    val kdsExcludedKeywords        by viewModel.kdsExcludedKeywords.collectAsStateWithLifecycle()
+    val kdsCompactCardMode         by viewModel.kdsCompactCardMode.collectAsStateWithLifecycle()
+    // Lokalna kopia do edycji w TextField — synchronizowana z Flow
+    var kdsExcludedKeywordsEdit by remember(kdsExcludedKeywords) { mutableStateOf(kdsExcludedKeywords) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+
+        // ─── Sekcja: Workflow KDS ────────────────────────────────────────
         item {
             Text(
-                text = stringResource(R.string.settings_main_config_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(16.dp)
+                text  = "Tryb pracy KDS",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon     = Icons.Default.Settings,
+                title    = "Tryb kolejkowy",
+                subtitle = if (kdsQueueMode)
+                    "Włączony: NEW → ACKED → IN_PROGRESS → READY → HANDOFF"
+                else
+                    "Wyłączony (domyślny): tylko GOTOWE — idealny dla sushi/baru",
+                isEnabled = kdsQueueMode,
+                onToggle  = { viewModel.setKdsQueueMode(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon     = Icons.Default.Print,
+                title    = "Drukuj automatycznie po GOTOWE",
+                subtitle = "Po oznaczeniu zamówienia jako GOTOWE drukuje bilet na drukarce",
+                isEnabled = kdsAutoPrintOnReady,
+                onToggle  = { viewModel.setKdsAutoPrintOnReady(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon     = Icons.Default.AccessTime,
+                title    = "Zakładka Zaplanowane",
+                subtitle = "Pokazuje zamówienia zaplanowane na konkretną godzinę (> 60 min)",
+                isEnabled = kdsShowScheduled,
+                onToggle  = { viewModel.setKdsShowScheduled(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.CheckCircle,
+                title     = "Potwierdzenie przed GOTOWE",
+                subtitle  = "Wymaga dodatkowego kliknięcia przed zmianą statusu na GOTOWE",
+                isEnabled = kdsRequireReadyConfirm,
+                onToggle  = { viewModel.setKdsRequireReadyConfirm(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Settings,
+                title     = "Panel Production Summary",
+                subtitle  = "Pokazuje agregację pozycji ze wszystkich aktywnych zamówień (np. 5× Zestaw A)",
+                isEnabled = kdsShowProductionSummary,
+                onToggle  = { viewModel.setKdsShowProductionSummary(it) }
+            )
+        }
+        if (kdsShowProductionSummary) {
+            item {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    Text(
+                        "Minimalna ilość pozycji do pokazania",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        if (kdsProductionMinQty <= 1) "Pokazuj wszystkie pozycje (nawet 1×)"
+                        else "Pokazuj tylko pozycje z ilością ≥ ${kdsProductionMinQty}×",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(1 to "Wszystkie", 2 to "≥ 2×", 3 to "≥ 3×", 5 to "≥ 5×").forEach { (value, label) ->
+                            FilterChip(
+                                selected = kdsProductionMinQty == value,
+                                onClick  = { viewModel.setKdsProductionMinQty(value) },
+                                label    = { Text(label, style = MaterialTheme.typography.labelMedium) }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    Text(
+                        "Układ kolumn Production Summary",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        if (kdsProductionColumns >= 2) "2 kolumny — więcej pozycji widocznych naraz"
+                        else "1 kolumna — standardowy układ pionowy",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(1 to "1 kolumna", 2 to "2 kolumny").forEach { (value, label) ->
+                            FilterChip(
+                                selected = kdsProductionColumns == value,
+                                onClick  = { viewModel.setKdsProductionColumns(value) },
+                                label    = { Text(label, style = MaterialTheme.typography.labelMedium) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Text(
+                text  = "Układ zamówień",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text("Tryb wyświetlania bloczków", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    when (kdsDisplayMode) {
+                        "STABLE_GRID"  -> "Stabilna siatka — zamówienia nie przeskakują po zmianach (zalecane)"
+                        "COLUMN_MODE"  -> "Niezależne kolumny — każda kolumna zarządzana osobno"
+                        else           -> "Kompaktowy przepływ — standardowy układ automatyczny"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "COMPACT_FLOW" to "Przepływ",
+                        "STABLE_GRID"  to "Stabilna",
+                        "COLUMN_MODE"  to "Kolumny"
+                    ).forEach { (value, label) ->
+                        FilterChip(
+                            selected = kdsDisplayMode == value,
+                            onClick  = { viewModel.setKdsDisplayMode(value) },
+                            label    = { Text(label) }
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Settings,
+                title     = "Wypełniaj wolne miejsca",
+                subtitle  = "Nowe zamówienie trafia na pierwsze wolne miejsce (tylko Stabilna siatka)",
+                isEnabled = kdsFillGaps,
+                onToggle  = { viewModel.setKdsFillGaps(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Close,
+                title     = "Zezwól na anulowanie zamówień",
+                subtitle  = "Pokazuje przycisk ANULUJ na karcie zamówienia. Domyślnie wyłączone.",
+                isEnabled = kdsCancelEnabled,
+                onToggle  = { viewModel.setKdsCancelEnabled(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Edit,
+                title     = "Pokazuj modyfikacje pozycji",
+                subtitle  = "Wyświetla notatki/dodatki przy każdej pozycji zamówienia (np. bez cebuli, extra sos).",
+                isEnabled = kdsShowNotes,
+                onToggle  = { viewModel.setKdsShowNotes(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Gesture,
+                title     = "Tryb tapowania nagłówka",
+                subtitle  = "Dotknięcie nagłówka zamówienia zmienia jego status. Przyciski PRZYJMIJ/GOTOWE znikają — więcej miejsca na ekranie.",
+                isEnabled = kdsHeaderTapMode,
+                onToggle  = { viewModel.setKdsHeaderTapMode(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.GridView,
+                title     = "Kompaktowy bloczek kuchenny",
+                subtitle  = "Skrócony widok: numer wew., numer zew., źródło, typ zamówienia i lista pozycji. Mniej miejsca, więcej bloczków na ekranie.",
+                isEnabled = kdsCompactCardMode,
+                onToggle  = { viewModel.setKdsCompactCardMode(it) }
             )
         }
 
+        // ─── Sekcja: Czasy przygotowania ─────────────────────────────────
+        item {
+            Text(
+                text     = "Czasy przygotowania",
+                style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color    = MaterialTheme.colorScheme.primary
+            )
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text(
+                    "🏠 Odbiór osobisty — zacznij gotować X minut przed",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Np. zamówienie na 12:00 → zacznij gotować o ${
+                        "%02d:%02d".format(
+                            (12 * 60 - kdsPrepTimePickup) / 60,
+                            (12 * 60 - kdsPrepTimePickup) % 60
+                        )
+                    } (${kdsPrepTimePickup} min przed)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    listOf(15, 20, 30, 45, 60).forEach { min ->
+                        FilterChip(
+                            selected = kdsPrepTimePickup == min,
+                            onClick  = { viewModel.setKdsPrepTimePickup(min) },
+                            label    = { Text("${min}min") }
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text(
+                    "🚗 Dostawa — zacznij gotować X minut przed",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Np. zamówienie na 12:00 → zacznij gotować o ${
+                        "%02d:%02d".format(
+                            (12 * 60 - kdsPrepTimeDelivery) / 60,
+                            (12 * 60 - kdsPrepTimeDelivery) % 60
+                        )
+                    } (${kdsPrepTimeDelivery} min przed)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    listOf(30, 45, 60, 75, 90).forEach { min ->
+                        FilterChip(
+                            selected = kdsPrepTimeDelivery == min,
+                            onClick  = { viewModel.setKdsPrepTimeDelivery(min) },
+                            label    = { Text("${min}min") }
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
+        }
+
+        // ─── Sekcja: Układ ekranu ────────────────────────────────────────
+        item {
+            Text(
+                text  = "Układ ekranu",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text("Liczba kolumn bloczków", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Auto — dopasowuje się do rozmiaru ekranu",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("auto" to "Auto", "2" to "2", "3" to "3", "4" to "4").forEach { (value, label) ->
+                        FilterChip(
+                            selected = kdsGridColumns == value,
+                            onClick  = { viewModel.setKdsGridColumns(value) },
+                            label    = { Text(label) }
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
+        }
+
+        // ─── Ustawienie: okno aktywacji zaplanowanych ────────────────────
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text(
+                    "📅 Okno aktywacji zaplanowanych zamówień",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Zamówienie zaplanowane pojawia się w Aktywnych na $kdsScheduledActiveWindow min przed godziną realizacji. " +
+                    "Wcześniej widoczne tylko w zakładce Plan.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment     = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    listOf(30, 45, 60, 90, 120).forEach { min ->
+                        FilterChip(
+                            selected = kdsScheduledActiveWindow == min,
+                            onClick  = { viewModel.setKdsScheduledActiveWindow(min) },
+                            label    = { Text("${min}min") }
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
+        }
+
+        // ─── Sekcja: Filtrowanie produktów ──────────────────────────────
+        item {
+            Text(
+                text     = "Filtrowanie produktów",
+                style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color    = MaterialTheme.colorScheme.primary
+            )
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text(
+                    "🚫 Ukryj produkty zawierające słowa kluczowe",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Produkty, których nazwa zawiera dowolne z podanych słów, nie będą wyświetlane " +
+                    "na bloczkach KDS ani w Produkcji łącznej. Rozdziel słowa przecinkami. " +
+                    "Przykład: opłata,fee,delivery charge",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value         = kdsExcludedKeywordsEdit,
+                    onValueChange = { kdsExcludedKeywordsEdit = it },
+                    modifier      = Modifier.fillMaxWidth(),
+                    label         = { Text("Słowa kluczowe (oddzielone przecinkami)") },
+                    placeholder   = { Text("opłata,fee,extra charge") },
+                    singleLine    = false,
+                    maxLines      = 3
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            viewModel.setKdsExcludedKeywords(kdsExcludedKeywordsEdit.trim())
+                        }
+                    ) { Text("Zapisz") }
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            kdsExcludedKeywordsEdit = "opłata"
+                            viewModel.setKdsExcludedKeywords("opłata")
+                        }
+                    ) { Text("Resetuj") }
+                }
+                // Podgląd aktualnych aktywnych słów kluczowych
+                val keywords = kdsExcludedKeywordsEdit.split(",")
+                    .map { it.trim() }.filter { it.isNotBlank() }
+                if (keywords.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text  = "Aktywne filtry: ${keywords.joinToString(" · ")}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
+        }
+
+        // ─── Sekcja: Terminal ────────────────────────────────────────────
+        item {
+            Text(
+                text  = stringResource(R.string.settings_main_config_title),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
         item {
             SettingsItemWithSwitch(
-                icon = Icons.Default.Notifications,
-                title = stringResource(R.string.settings_main_kiosk_mode_title),
+                icon     = Icons.Default.Notifications,
+                title    = stringResource(R.string.settings_main_kiosk_mode_title),
                 subtitle = stringResource(R.string.settings_main_kiosk_mode_subtitle),
                 isEnabled = kioskModeEnabled,
-                onToggle = { viewModel.setKioskModeEnabled(it) }
+                onToggle  = { viewModel.setKioskModeEnabled(it) }
             )
         }
-
         item {
             SettingsItemWithSwitch(
-                icon = Icons.Default.Settings,
-                title = stringResource(R.string.settings_main_auto_restart_title),
+                icon     = Icons.Default.Settings,
+                title    = stringResource(R.string.settings_main_auto_restart_title),
                 subtitle = stringResource(R.string.settings_main_auto_restart_subtitle),
                 isEnabled = autoRestartEnabled,
-                onToggle = { viewModel.setAutoRestartEnabled(it) }
+                onToggle  = { viewModel.setAutoRestartEnabled(it) }
             )
         }
-
         item {
             SettingsItemWithSwitch(
-                icon = Icons.Default.Settings,
-                title = stringResource(R.string.settings_main_task_reopen_title),
+                icon     = Icons.Default.Settings,
+                title    = stringResource(R.string.settings_main_task_reopen_title),
                 subtitle = stringResource(R.string.settings_main_task_reopen_subtitle),
                 isEnabled = taskReopenEnabled,
-                onToggle = { viewModel.setTaskReopenEnabled(it) }
+                onToggle  = { viewModel.setTaskReopenEnabled(it) }
             )
         }
 
+        // ─── Sekcja: Inne ────────────────────────────────────────────────
         item {
             Text(
-                text = stringResource(R.string.settings_main_other_section),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(16.dp)
+                text  = stringResource(R.string.settings_main_other_section),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.primary
             )
         }
-
         item {
             SettingsItem(
-                icon = Icons.Default.Settings,
-                title = stringResource(R.string.settings_main_about_title),
+                icon     = Icons.Default.Settings,
+                title    = stringResource(R.string.settings_main_about_title),
                 subtitle = stringResource(R.string.settings_main_about_subtitle),
-                onClick = { /* TODO: O aplikacji */ }
+                onClick  = { }
             )
         }
 
-        // ✅ NOWY: Przycisk Test Crash (tylko w DEBUG)
         if (com.itsorderkds.BuildConfig.DEBUG) {
             item {
                 SettingsItem(
-                    icon = Icons.Default.BugReport,
-                    title = "Test Crash & Auto-Restart",
+                    icon     = Icons.Default.BugReport,
+                    title    = "Test Crash & Auto-Restart",
                     subtitle = "Symuluje crash aplikacji i sprawdza auto-restart (tylko DEBUG)",
-                    onClick = {
-                        // Celowy crash po 1 sekundzie (żeby UI zdążyło się odświeżyć)
+                    onClick  = {
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             timber.log.Timber.tag("TEST_CRASH").w("🧪 Symulowany crash - test auto-restart")
                             throw RuntimeException("🧪 TEST CRASH: Sprawdzenie mechanizmu auto-restart")
@@ -450,21 +928,20 @@ class NotificationSettingsViewModel @Inject constructor(
 ) : androidx.lifecycle.ViewModel() {
     data class SoundItem(val label: String, val uri: String)
 
-    // Lista dostępnych dźwięków z zasobów raw (używa tłumaczonych nazw)
+    // Dostępne dźwięki z zasobów raw
     val availableSounds: List<SoundItem> by lazy {
         listOf(
-            SoundItem(app.getString(R.string.sound_name_default), "android.resource://com.itsorderkds/${R.raw.order_iphone}"),
-            SoundItem(app.getString(R.string.sound_name_soft_chime), "android.resource://com.itsorderkds/${R.raw.sound1}"),
+            SoundItem(app.getString(R.string.sound_name_default),      "android.resource://com.itsorderkds/${R.raw.alarm1}"),
+            SoundItem(app.getString(R.string.sound_name_default),      "android.resource://com.itsorderkds/${R.raw.order_iphone}"),
+            SoundItem(app.getString(R.string.sound_name_soft_chime),   "android.resource://com.itsorderkds/${R.raw.sound1}"),
             SoundItem(app.getString(R.string.sound_name_classic_bell), "android.resource://com.itsorderkds/${R.raw.sound2}")
         )
     }
 
-    val types: List<NotificationType> = listOf(
-        NotificationType.ORDER_ALARM,
-        NotificationType.ROUTE_UPDATED,
-        NotificationType.GENERAL
-    )
+    // Zachowujemy dla kompatybilności wstecznej
+    val types: List<NotificationType> = listOf(NotificationType.ORDER_ALARM)
 
+    // Dla kompatybilności z TabRow (nie używane aktualnie)
     private val _currentTypeIndex = MutableStateFlow(0)
     val currentTypeIndexFlow: StateFlow<Int> = _currentTypeIndex
 
@@ -475,41 +952,38 @@ class NotificationSettingsViewModel @Inject constructor(
     val isMutedFlow: StateFlow<Boolean> = _isMuted
 
     init {
-        viewModelScope.launch { loadForType(types[_currentTypeIndex.value]) }
+        viewModelScope.launch {
+            _selectedUri.value = prefs.getKdsNotificationSoundUri()
+                ?: "android.resource://com.itsorderkds/${R.raw.alarm1}"
+            _isMuted.value = prefs.isNotificationSoundMuted("order_alarm")
+        }
     }
 
-    private suspend fun loadForType(type: NotificationType) {
-        val key = type.toKey()
-        _selectedUri.value = prefs.getNotificationSoundUri(key)
-        _isMuted.value = prefs.isNotificationSoundMuted(key)
+    fun selectType(index: Int) {}  // nieużywane, zachowane dla kompatybilności
+
+    /** Ustaw dźwięk i zaktualizuj kanał systemowy Android. */
+    fun setNotificationSound(uri: String, context: android.content.Context) {
+        viewModelScope.launch {
+            prefs.setKdsNotificationSoundUri(uri)
+            _selectedUri.value = uri
+            NotificationHelper.updateKdsTicketChannelSound(context, uri)
+        }
     }
 
-    fun selectType(index: Int) {
-        if (index == _currentTypeIndex.value) return
-        _currentTypeIndex.value = index
-        viewModelScope.launch { loadForType(types[index]) }
-    }
-
+    /** Stary API — zachowany dla kompatybilności. */
     fun setNotificationSound(type: NotificationType, uri: String) {
         viewModelScope.launch {
-            val key = type.toKey()
-            prefs.setNotificationSoundUri(key, uri)
+            prefs.setKdsNotificationSoundUri(uri)
             _selectedUri.value = uri
         }
     }
 
     fun setMuted(muted: Boolean) {
         viewModelScope.launch {
-            val key = types[_currentTypeIndex.value].toKey()
-            prefs.setNotificationSoundMuted(key, muted)
+            prefs.setNotificationSoundMuted("order_alarm", muted)
+            prefs.setKdsSoundMuted(muted)   // synchronizuj szybki przełącznik z panelu KDS
             _isMuted.value = muted
         }
-    }
-
-    private fun NotificationType.toKey(): String = when (this) {
-        NotificationType.ORDER_ALARM -> "order_alarm"
-        NotificationType.ROUTE_UPDATED -> "route_updated"
-        NotificationType.GENERAL -> "general"
     }
 }
 

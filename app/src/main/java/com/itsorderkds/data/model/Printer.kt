@@ -136,7 +136,8 @@ data class Printer(
     val codepage: Int? = null,           // 13 (PC852), null dla UTF-8
     val autoCut: Boolean = false,        // automatyczne cięcie papieru
     val enabled: Boolean = true,         // czy drukarka jest aktywna
-    val order: Int = 0                   // kolejność drukowania (1, 2, 3...)
+    val order: Int = 0,                  // kolejność drukowania (1, 2, 3...)
+    val plainTextMode: Boolean = false   // tryb zwykłego tekstu — dla drukarek nieobsługujących ESC/POS (biurowe, laserowe)
 ) {
     /**
      * Konwersja do legacy PrinterSettings (backward compatibility).

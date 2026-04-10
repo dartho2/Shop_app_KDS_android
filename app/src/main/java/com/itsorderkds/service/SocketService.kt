@@ -45,6 +45,8 @@ class SocketService : Service() {
     @Inject
     lateinit var socketEventsRepo: SocketEventsRepository
     @Inject
+    lateinit var kdsSocketEventsRepo: KdsSocketEventsRepository
+    @Inject
     lateinit var socketStaffEventsHandler: SocketStaffEventsHandler
     @Inject
     lateinit var kdsSocketEventsHandler: KdsSocketEventsHandler
@@ -82,10 +84,12 @@ class SocketService : Service() {
         // Globalne listenery socketów
         SocketManager.onConnect = {
             socketEventsRepo.emitConnected()
+            kdsSocketEventsRepo.emitConnected()
             cancelWsDisconnectAlarm()  // ← WYŁĄCZ alarm po reconnect
         }
         SocketManager.onDisconnect = {
             socketEventsRepo.emitDisconnected()
+            kdsSocketEventsRepo.emitDisconnected()
             scheduleWsDisconnectAlarm() // ← WŁĄCZ alarm po rozłączeniu
         }
         SocketManager.onAuthExpired = { handleAuthExpiry() }

@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.itsorderkds.data.responses.UserRole
@@ -69,6 +70,10 @@ class AppPreferencesManager @Inject constructor(
         val AUTO_PRINT_DINE_IN_PRINTERS = stringPreferencesKey("auto_print_dine_in_printers") // "main", "kitchen", "both"
         val AUTO_PRINT_KITCHEN = booleanPreferencesKey("auto_print_kitchen") // Czy drukować na kuchni po zaakceptowaniu (LEGACY - replaced by AUTO_PRINT_ACCEPTED_PRINTERS)
 
+        // ── New Print Rules (v2) ──────────────────────────────────────────
+        // JSON: List<PrintStatusRule> serializowany jako string
+        val PRINT_STATUS_RULES = stringPreferencesKey("print_status_rules_v2")
+
         // Printed Orders Tracking
         val PRINTED_ORDER_IDS = stringPreferencesKey("printed_order_ids") // Rozdzielone przecinkami
 
@@ -76,6 +81,30 @@ class AppPreferencesManager @Inject constructor(
         val KIOSK_MODE_ENABLED = booleanPreferencesKey("kiosk_mode_enabled")
         val AUTO_RESTART_ENABLED = booleanPreferencesKey("auto_restart_enabled")
         val TASK_REOPEN_ENABLED = booleanPreferencesKey("task_reopen_enabled")
+
+        // KDS Workflow Settings
+        val KDS_QUEUE_MODE = booleanPreferencesKey("kds_queue_mode")                        // false = tryb prosty (ACTIVE/READY), true = kolejkowy
+        val KDS_AUTO_PRINT_ON_READY = booleanPreferencesKey("kds_auto_print_on_ready")      // drukuj po READY
+        val KDS_SHOW_SCHEDULED = booleanPreferencesKey("kds_show_scheduled")                // zakładka zaplanowane
+        val KDS_REQUIRE_READY_CONFIRM = booleanPreferencesKey("kds_require_ready_confirm")  // potwierdzenie przed GOTOWE
+        val KDS_GRID_COLUMNS = stringPreferencesKey("kds_grid_columns")                     // "auto" | "2" | "3" | "4"
+        val KDS_SHOW_PRODUCTION_SUMMARY = booleanPreferencesKey("kds_show_production_summary") // panel agregacji
+        val KDS_DISPLAY_MODE = stringPreferencesKey("kds_display_mode")                      // COMPACT_FLOW | STABLE_GRID | COLUMN_MODE
+        val KDS_FILL_GAPS = booleanPreferencesKey("kds_fill_gaps")                           // czy wypełniać puste sloty nowymi
+        val KDS_PREP_TIME_PICKUP   = intPreferencesKey("kds_prep_time_pickup")               // min przed odbiorem osobistym
+        val KDS_PREP_TIME_DELIVERY = intPreferencesKey("kds_prep_time_delivery")             // min przed dostawą
+        val KDS_CANCEL_ENABLED     = booleanPreferencesKey("kds_cancel_enabled")             // czy pokazywać przycisk ANULUJ
+        val KDS_SHOW_NOTES         = booleanPreferencesKey("kds_show_notes")                 // czy pokazywać notatki/modyfikacje przy pozycjach
+        val KDS_HEADER_TAP_MODE    = booleanPreferencesKey("kds_header_tap_mode")            // kliknięcie nagłówka zmienia status (bez przycisków)
+        val KDS_SCHEDULED_ACTIVE_WINDOW = intPreferencesKey("kds_scheduled_active_window") // ile minut przed scheduledFor zamówienie przechodzi do aktywnych (domyślnie 60)
+        val KDS_PRODUCTION_MIN_QTY  = intPreferencesKey("kds_production_min_qty")          // Production Summary: minimalna ilość (domyślnie 1 = pokaż wszystko, 2 = tylko >1)
+        val KDS_PRODUCTION_COLUMNS  = intPreferencesKey("kds_production_columns")          // Production Summary: liczba kolumn (1 lub 2)
+        val KDS_EXCLUDED_KEYWORDS   = stringPreferencesKey("kds_excluded_keywords")        // Słowa kluczowe do ukrywania produktw (przecinkami), domyślnie "opłata"
+        val KDS_COMPACT_CARD_MODE   = booleanPreferencesKey("kds_compact_card_mode")       // Skrócony bloczek kuchenny (mniej miejsca, więcej informacji)
+
+        // KDS Quick Toggles (szybkie przełączniki z panelu bocznego)
+        val KDS_SOUND_MUTED        = booleanPreferencesKey("kds_sound_muted")              // czy dźwięk nowego zamówienia jest wyciszony
+        val KDS_PRINTING_PAUSED    = booleanPreferencesKey("kds_printing_paused")          // czy drukowanie jest tymczasowo wstrzymane
 
         // Legacy/Compatibility
         val SHOP_NAME = stringPreferencesKey("shop_name")
@@ -345,6 +374,21 @@ class AppPreferencesManager @Inject constructor(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // New Print Rules v2 (per-status print rules)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Serializowany JSON listy PrintStatusRule */
+    val printStatusRulesFlow: Flow<String> = dataStore.data
+        .map { it[Keys.PRINT_STATUS_RULES] ?: "" }.distinctUntilChanged()
+
+    suspend fun getPrintStatusRulesJson(): String =
+        dataStore.data.map { it[Keys.PRINT_STATUS_RULES] ?: "" }.first()
+
+    suspend fun setPrintStatusRulesJson(json: String) {
+        dataStore.edit { it[Keys.PRINT_STATUS_RULES] = json }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Printed Orders Tracking (zapobieganie duplikacji przy restarcie)
     // ─────────────────────────────────────────────────────────────────────
 
@@ -453,6 +497,205 @@ class AppPreferencesManager @Inject constructor(
     val taskReopenEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[Keys.TASK_REOPEN_ENABLED] ?: true // domyślnie włączone
     }.distinctUntilChanged()
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // KDS Workflow Settings
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** false = tryb prosty ACTIVE/READY (domyślny), true = pełny kolejkowy */
+    val kdsQueueModeFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_QUEUE_MODE] ?: false }.distinctUntilChanged()
+
+    suspend fun isKdsQueueMode(): Boolean =
+        dataStore.data.map { it[Keys.KDS_QUEUE_MODE] ?: false }.first()
+
+    suspend fun setKdsQueueMode(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_QUEUE_MODE] = enabled }
+    }
+
+    /** Drukuj automatycznie gdy ticket przechodzi na READY */
+    val kdsAutoPrintOnReadyFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_AUTO_PRINT_ON_READY] ?: false }.distinctUntilChanged()
+
+    suspend fun isKdsAutoPrintOnReady(): Boolean =
+        dataStore.data.map { it[Keys.KDS_AUTO_PRINT_ON_READY] ?: false }.first()
+
+    suspend fun setKdsAutoPrintOnReady(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_AUTO_PRINT_ON_READY] = enabled }
+    }
+
+    /** Pokazuj zakładkę "Zaplanowane" */
+    val kdsShowScheduledFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_SHOW_SCHEDULED] ?: true }.distinctUntilChanged()
+
+    suspend fun isKdsShowScheduled(): Boolean =
+        dataStore.data.map { it[Keys.KDS_SHOW_SCHEDULED] ?: true }.first()
+
+    suspend fun setKdsShowScheduled(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_SHOW_SCHEDULED] = enabled }
+    }
+
+    /** Wymagaj potwierdzenia zanim ticket przejdzie na READY */
+    val kdsRequireReadyConfirmFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_REQUIRE_READY_CONFIRM] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsRequireReadyConfirm(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_REQUIRE_READY_CONFIRM] = enabled }
+    }
+
+    /** Liczba kolumn gridu: "auto", "2", "3", "4" */
+    val kdsGridColumnsFlow: Flow<String> = dataStore.data
+        .map { it[Keys.KDS_GRID_COLUMNS] ?: "auto" }.distinctUntilChanged()
+
+    suspend fun setKdsGridColumns(columns: String) {
+        dataStore.edit { it[Keys.KDS_GRID_COLUMNS] = columns }
+    }
+
+    /** Panel agregacji pozycji (Production Summary) */
+    val kdsShowProductionSummaryFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_SHOW_PRODUCTION_SUMMARY] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsShowProductionSummary(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_SHOW_PRODUCTION_SUMMARY] = enabled }
+    }
+
+    /** Tryb wyświetlania zamówień: COMPACT_FLOW | STABLE_GRID | COLUMN_MODE */
+    val kdsDisplayModeFlow: Flow<String> = dataStore.data
+        .map { it[Keys.KDS_DISPLAY_MODE] ?: "STABLE_GRID" }.distinctUntilChanged()
+
+    suspend fun setKdsDisplayMode(mode: String) {
+        dataStore.edit { it[Keys.KDS_DISPLAY_MODE] = mode }
+    }
+
+    /** Czy nowe zamówienia wypełniają puste sloty (true) czy trafiają na koniec (false) */
+    val kdsFillGapsFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_FILL_GAPS] ?: true }.distinctUntilChanged()
+
+    suspend fun setKdsFillGaps(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_FILL_GAPS] = enabled }
+    }
+
+    /** Czas przygotowania dla odbioru osobistego (minuty przed scheduledFor) */
+    val kdsPrepTimePickupFlow: Flow<Int> = dataStore.data
+        .map { it[Keys.KDS_PREP_TIME_PICKUP] ?: 30 }.distinctUntilChanged()
+
+    suspend fun setKdsPrepTimePickup(minutes: Int) {
+        dataStore.edit { it[Keys.KDS_PREP_TIME_PICKUP] = minutes.coerceIn(5, 120) }
+    }
+
+    /** Czas przygotowania dla dostawy (minuty przed scheduledFor) */
+    val kdsPrepTimeDeliveryFlow: Flow<Int> = dataStore.data
+        .map { it[Keys.KDS_PREP_TIME_DELIVERY] ?: 60 }.distinctUntilChanged()
+
+    suspend fun setKdsPrepTimeDelivery(minutes: Int) {
+        dataStore.edit { it[Keys.KDS_PREP_TIME_DELIVERY] = minutes.coerceIn(5, 120) }
+    }
+
+    /** Czy przycisk ANULUJ jest widoczny na karcie KDS (domyślnie wyłączony) */
+    val kdsCancelEnabledFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_CANCEL_ENABLED] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsCancelEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_CANCEL_ENABLED] = enabled }
+    }
+
+    /** Czy pokazywać notatki/modyfikacje przy pozycjach na karcie KDS (domyślnie true) */
+    val kdsShowNotesFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_SHOW_NOTES] ?: true }.distinctUntilChanged()
+
+    suspend fun setKdsShowNotes(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_SHOW_NOTES] = enabled }
+    }
+
+    /** Tryb tapowania nagłówka — klik nagłówka przesuwa status bez przycisków (domyślnie false) */
+    val kdsHeaderTapModeFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_HEADER_TAP_MODE] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsHeaderTapMode(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_HEADER_TAP_MODE] = enabled }
+    }
+
+    /**
+     * Za ile minut przed scheduledFor zamówienie zaplanowane przechodzi z "Plan"
+     * do widoku "Aktywne". Domyślnie 60 min.
+     * Przykład: scheduledFor=12:00, window=60 → pojawia się w Aktywnych o 11:00.
+     */
+    val kdsScheduledActiveWindowFlow: Flow<Int> = dataStore.data
+        .map { it[Keys.KDS_SCHEDULED_ACTIVE_WINDOW] ?: 60 }.distinctUntilChanged()
+
+    suspend fun setKdsScheduledActiveWindow(minutes: Int) {
+        dataStore.edit { it[Keys.KDS_SCHEDULED_ACTIVE_WINDOW] = minutes.coerceIn(15, 480) }
+    }
+
+    /**
+     * Production Summary: minimalna ilość do wyświetlenia.
+     * 1 = pokaż wszystkie (domyślnie), 2 = tylko pozycje z qty >= 2.
+     */
+    val kdsProductionMinQtyFlow: Flow<Int> = dataStore.data
+        .map { it[Keys.KDS_PRODUCTION_MIN_QTY] ?: 1 }.distinctUntilChanged()
+
+    suspend fun setKdsProductionMinQty(minQty: Int) {
+        dataStore.edit { it[Keys.KDS_PRODUCTION_MIN_QTY] = minQty.coerceIn(1, 10) }
+    }
+
+    /**
+     * Production Summary: liczba kolumn (1 lub 2).
+     * 1 = jedna kolumna (domyślnie), 2 = dwie kolumny.
+     */
+    val kdsProductionColumnsFlow: Flow<Int> = dataStore.data
+        .map { it[Keys.KDS_PRODUCTION_COLUMNS] ?: 1 }.distinctUntilChanged()
+
+    suspend fun setKdsProductionColumns(columns: Int) {
+        dataStore.edit { it[Keys.KDS_PRODUCTION_COLUMNS] = columns.coerceIn(1, 2) }
+    }
+
+    /**
+     * Słowa kluczowe do ukrywania produktów na bloczkach KDS i w Production Summary.
+     * Produkty których nazwa zawiera dowolne z tych słów (bez rozróżniania wielkości liter)
+     * nie będą wyświetlane. Domyślnie "opłata".
+     * Format: słowa oddzielone przecinkami, np. "opłata,fee,extra"
+     */
+    val kdsExcludedKeywordsFlow: Flow<String> = dataStore.data
+        .map { it[Keys.KDS_EXCLUDED_KEYWORDS] ?: "opłata" }.distinctUntilChanged()
+
+    suspend fun setKdsExcludedKeywords(keywords: String) {
+        dataStore.edit { it[Keys.KDS_EXCLUDED_KEYWORDS] = keywords }
+    }
+
+    /** Skrócony bloczek kuchenny — mały nagłówek + lista pozycji bez zbędnych detali. */
+    val kdsCompactCardModeFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_COMPACT_CARD_MODE] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsCompactCardMode(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_COMPACT_CARD_MODE] = enabled }
+    }
+
+    /** Szybkie wyciszenie dźwięku nowego zamówienia z panelu bocznego KDS. */
+    val kdsSoundMutedFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_SOUND_MUTED] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsSoundMuted(muted: Boolean) {
+        dataStore.edit { it[Keys.KDS_SOUND_MUTED] = muted }
+    }
+
+    /** Flow dla wybranego URI dźwięku nowego zamówienia KDS (null = domyślny systemowy). */
+    val kdsNotificationSoundUriFlow: Flow<String?> = dataStore.data
+        .map { it[Keys.notificationSoundKey("order_alarm")] }.distinctUntilChanged()
+
+    suspend fun getKdsNotificationSoundUri(): String? =
+        dataStore.data.map { it[Keys.notificationSoundKey("order_alarm")] }.first()
+
+    suspend fun setKdsNotificationSoundUri(uri: String) {
+        setNotificationSoundUri("order_alarm", uri)
+    }
+
+    /** Szybkie wstrzymanie drukowania z panelu bocznego KDS. */
+    val kdsPrintingPausedFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_PRINTING_PAUSED] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsPrintingPaused(paused: Boolean) {
+        dataStore.edit { it[Keys.KDS_PRINTING_PAUSED] = paused }
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // Clear All

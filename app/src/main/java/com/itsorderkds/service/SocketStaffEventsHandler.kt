@@ -2,15 +2,12 @@ package com.itsorderkds.service
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import com.itsorderkds.data.entity.mapper.OrderMapper
 import com.itsorderkds.data.model.CourierChangePayload
 import com.itsorderkds.data.model.ExternalDeliveryOutboxPayload
-import com.itsorderkds.data.model.ExternalCourierPayload
-import com.itsorderkds.data.model.OrderReminderPayload
 import com.itsorderkds.data.model.OrderStatusWrapper
 import com.itsorderkds.data.model.OrderTras
 import com.itsorderkds.data.model.OrderWrapper
@@ -25,7 +22,6 @@ import com.itsorderkds.notifications.NotificationHelper
 import com.itsorderkds.ui.order.OrderStatusEnum
 import com.itsorderkds.ui.settings.print.PrinterService
 import com.itsorderkds.ui.theme.home.HomeActivity
-import com.itsorderkds.util.AppPrefs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +73,7 @@ class SocketStaffEventsHandler @Inject constructor(
         SocketEvent.ORDER_SEND_TO_EXTERNAL_SUCCESS to onExternalOutboxUpdate(SocketAction.Action.ORDER_SEND_TO_EXTERNAL_SUCCESS),
         SocketEvent.ORDER_SEND_TO_EXTERNAL_FAILED to onExternalOutboxUpdate(SocketAction.Action.ORDER_SEND_TO_EXTERNAL_FAILED),
         SocketEvent.ORDER_SEND_TO_EXTERNAL_COURIER to onExternalOutboxUpdate(SocketAction.Action.ORDER_SEND_TO_EXTERNAL_COURIER),
-        SocketEvent.ORDER_REMINDER to ::handleOrderReminderAlarm,
+        // ORDER_REMINDER usunięty — KDS nie używa alarmu dla niezaakceptowanych zamówień
     )
 
     fun register() {
@@ -248,31 +244,6 @@ class SocketStaffEventsHandler @Inject constructor(
         }
     }
 
-    private fun handleOrderReminderAlarm(args: Array<Any>) {
-        val payload = parsePayload(args, OrderReminderPayload::class.java) ?: return
-
-        Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        Timber.tag("ALARM START").w("🔔 [SocketStaffEventsHandler] REMINDER ALARM RECEIVED!")
-        Timber.tag("ALARM START").w("   ├─ orderId: ${payload.orderId}")
-        Timber.tag("ALARM START").w("   ├─ reminderNumber: ${payload.reminderNumber}")
-        Timber.tag("ALARM START").w("   ├─ Thread: ${Thread.currentThread().name}")
-        Timber.tag("ALARM START").w("   └─ Timestamp: ${System.currentTimeMillis()}")
-
-        Timber.tag(TAG).w("🔔 REMINDER ALARM RECEIVED! Order: ${payload.orderId}, Attempt: ${payload.reminderNumber}")
-        startAlarmServiceSafely(payload.orderId, gson.toJson(payload))
-
-        if (!AppStateManager.isAppInForeground) {
-            Timber.tag(TAG).d("App in background during REMINDER. Waking up!")
-            openHomeWithPayload(gson.toJson(payload), isReminder = true)
-        }
-
-        ioScope.launch {
-            when (val res = ordersRepository.fetchOrderByIdFromApi(payload.orderId)) {
-                is Resource.Success -> socketEventsRepo.emitOrder(res.value)
-                else -> Timber.e("Failed to fetch order details for reminder: ${payload.orderId}")
-            }
-        }
-    }
 
     private fun openHomeWithPayload(jsonPayload: String, isReminder: Boolean = false) {
         val intent = Intent(context, HomeActivity::class.java).apply {
@@ -436,39 +407,6 @@ class SocketStaffEventsHandler @Inject constructor(
         sendJsonBroadcast(action, rawJson)
     }
 
-    private fun startAlarmServiceSafely(orderId: String?, orderJson: String) {
-        if (orderId == null) return
-
-        // 🔍 ALARM START - SocketStaffEventsHandler
-        Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        Timber.tag("ALARM START").w("🚨 [SocketStaffEventsHandler] Uruchamiam OrderAlarmService")
-        Timber.tag("ALARM START").w("   ├─ orderId: $orderId")
-        Timber.tag("ALARM START").w("   ├─ Thread: ${Thread.currentThread().name}")
-        Timber.tag("ALARM START").w("   ├─ Stack trace:")
-        Thread.currentThread().stackTrace.take(8).forEachIndexed { idx, element ->
-            Timber.tag("ALARM START").w("   │  $idx: $element")
-        }
-        Timber.tag("ALARM START").w("   └─ Timestamp: ${System.currentTimeMillis()}")
-
-        val intent = Intent(context, OrderAlarmService::class.java).apply {
-            putExtra(OrderAlarmService.EXTRA_ORDER_ID, orderId)
-            putExtra(OrderAlarmService.EXTRA_ORDER_JSON, orderJson)
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                Timber.tag("ALARM START").i("   → startForegroundService()")
-                context.startForegroundService(intent)
-            } else {
-                Timber.tag("ALARM START").i("   → startService()")
-                context.startService(intent)
-            }
-            Timber.tag("ALARM START").w("✅ OrderAlarmService uruchomiony pomyślnie!")
-            Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        } catch (t: Throwable) {
-            Timber.tag("ALARM START").e(t, "❌ Failed to start OrderAlarmService for $orderId")
-            Timber.tag("ALARM START").w("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        }
-    }
 
     private fun <T> parsePayload(args: Array<Any>, type: Class<T>): T? {
         val json = args.firstOrNull()?.toString() ?: run {

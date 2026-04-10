@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.itsorderkds.data.model.Printer
 import com.itsorderkds.data.preferences.PrinterPreferences
+import com.itsorderkds.ui.settings.print.PrinterService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,13 +15,10 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-/**
- * ViewModel dla ekranu zarządzania drukarkami.
- * Obsługuje CRUD operacje na liście drukarek.
- */
 @HiltViewModel
 class PrintersViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val printerService: PrinterService
 ) : ViewModel() {
 
     private val _printers = MutableStateFlow<List<Printer>>(emptyList())
@@ -32,8 +30,38 @@ class PrintersViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    /** Stan testu bloczka: null = brak, true = drukuję, false = gotowe/błąd */
+    private val _testPrintState = MutableStateFlow<String?>(null)
+    val testPrintState: StateFlow<String?> = _testPrintState.asStateFlow()
+
     init {
         loadPrinters()
+    }
+
+    // ...existing code...
+
+    /**
+     * Drukuje testowy bloczek KDS na konkretnej drukarce.
+     * Używany z przycisku "Test bloczka" w ustawieniach drukarki.
+     */
+    fun testKitchenPrint(printer: Printer) {
+        viewModelScope.launch {
+            try {
+                _testPrintState.value = "printing:${printer.id}"
+                Timber.d("PrintersViewModel: Test bloczka KDS na drukarce '${printer.name}'")
+                printerService.printKitchenTicketTest(printer)
+                _testPrintState.value = "done:${printer.id}"
+                Timber.d("PrintersViewModel: Test bloczka zakończony dla '${printer.name}'")
+            } catch (e: Exception) {
+                Timber.e(e, "PrintersViewModel: Błąd testu bloczka dla '${printer.name}'")
+                _errorMessage.value = "Błąd testu drukarki: ${e.message}"
+                _testPrintState.value = "error:${printer.id}"
+            }
+        }
+    }
+
+    fun clearTestState() {
+        _testPrintState.value = null
     }
 
     /**

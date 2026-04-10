@@ -137,7 +137,9 @@ class PrinterConnectionManager {
     }
 
     /**
-     * Strategia dla sieci: szybsze timeout, mniej retry (sieć jest stabilniejsza).
+     * Strategia dla sieci: timeout 10s, 3 próby z backoffem.
+     * ECONNREFUSED = drukarka włączona ale port 9100 zablokowany lub zły adres IP.
+     * SocketTimeoutException = drukarka niedostępna / zły IP / firewall.
      */
     private suspend fun <T> connectNetwork(
         connection: DeviceConnection,
@@ -147,7 +149,7 @@ class PrinterConnectionManager {
 
         var connected = false
         var lastError: Exception? = null
-        val maxAttempts = 2 // Sieć: mniej retry (albo działa, albo nie)
+        val maxAttempts = 3
 
         for (attempt in 1..maxAttempts) {
             try {
@@ -158,22 +160,39 @@ class PrinterConnectionManager {
                 break
             } catch (e: Exception) {
                 lastError = e
-                Timber.w("❌ Network connect failed (attempt #$attempt): ${e.message}")
+                val hint = when {
+                    e.message?.contains("ECONNREFUSED") == true ->
+                        "ECONNREFUSED — sprawdź: czy port 9100 jest otwarty, czy drukarka jest gotowa do drukowania"
+                    e.message?.contains("timeout") == true || e.message?.contains("SocketTimeout") == true ->
+                        "Timeout — sprawdź: adres IP drukarki, czy drukarka jest w tej samej sieci Wi-Fi"
+                    else -> e.message ?: "nieznany błąd"
+                }
+                Timber.w("❌ Network connect failed (attempt #$attempt): $hint")
 
                 try { connection.disconnect() } catch (_: Exception) {}
 
                 if (attempt < maxAttempts) {
-                    delay(500) // Krótki backoff dla sieci
+                    val backoffMs = 1000L * attempt  // 1s, 2s
+                    Timber.d("⏳ Retry za ${backoffMs}ms...")
+                    delay(backoffMs)
                 }
             }
         }
 
         if (!connected) {
-            Timber.e("💥 Network connection failed")
-            throw Exception("Network connect failed after $maxAttempts retries", lastError)
+            val errorHint = when {
+                lastError?.message?.contains("ECONNREFUSED") == true ->
+                    "Połączenie odrzucone (ECONNREFUSED) — port 9100 zablokowany lub drukarka nie akceptuje RAW print"
+                lastError?.message?.contains("timeout") == true || lastError?.message?.contains("SocketTimeout") == true ->
+                    "Timeout połączenia — sprawdź adres IP i czy drukarka jest w tej samej sieci"
+                else ->
+                    "Network connect failed after $maxAttempts prób"
+            }
+            Timber.e("💥 Network connection failed: $errorHint")
+            throw Exception(errorHint, lastError)
         }
 
-        return executeAndCleanup(connection, block, flushMs = 100, cleanupMs = 200)
+        return executeAndCleanup(connection, block, flushMs = 200, cleanupMs = 300)
     }
 
     /**
@@ -245,19 +264,47 @@ class PrinterConnectionManager {
         fun createConnection(printer: Printer): DeviceConnection {
             return when (printer.connectionType) {
                 PrinterConnectionType.BLUETOOTH -> {
-                    // DantSu obsługuje to przez BluetoothPrintersConnections().list
                     throw IllegalStateException("Use BluetoothPrintersConnections to get BT connection")
                 }
                 PrinterConnectionType.NETWORK -> {
                     val ip = printer.networkIp ?: throw IllegalArgumentException("Network IP not set")
                     val port = printer.networkPort
-                    Timber.d("Creating TCP connection: $ip:$port")
-                    TcpConnection(ip, port)
+                    Timber.d("Creating TCP connection: $ip:$port (timeout=10000ms)")
+                    TcpConnection(ip, port, 10000)
                 }
                 PrinterConnectionType.BUILTIN -> {
-                    // Android Print Service - wymaga dedykowanej implementacji
                     throw UnsupportedOperationException("Builtin printer not yet implemented")
                 }
+            }
+        }
+
+        /**
+         * Drukuje czysty tekst przez TCP socket — dla zwykłych drukarek sieciowych
+         * (biurowe, laserowe, HP, Canon, Brother itp.) które nie obsługują ESC/POS.
+         *
+         * Wysyła tekst jako bajty UTF-8 przez port 9100 (lub skonfigurowany).
+         * Większość drukarek sieciowych obsługuje ten tryb jako "RAW text".
+         */
+        suspend fun printPlainTextOverNetwork(
+            ip: String,
+            port: Int,
+            text: String,
+            timeoutMs: Int = 10000
+        ) = withContext(Dispatchers.IO) {
+            Timber.d("🌐 Plain text print: $ip:$port (${text.length} znaków)")
+            val socket = java.net.Socket()
+            try {
+                socket.connect(java.net.InetSocketAddress(ip, port), timeoutMs)
+                socket.soTimeout = timeoutMs
+                val out = socket.getOutputStream()
+                // Wyślij tekst jako UTF-8
+                out.write(text.toByteArray(Charsets.UTF_8))
+                // Form feed — wymusza wydruk na niektórych drukarkach
+                out.write(0x0C)
+                out.flush()
+                Timber.d("✅ Plain text wysłany do $ip:$port")
+            } finally {
+                try { socket.close() } catch (_: Exception) {}
             }
         }
     }
