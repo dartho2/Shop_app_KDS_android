@@ -74,7 +74,30 @@ data class KdsTicket(
      * Null = API jeszcze nie obsługuje tego pola (fallback: wyświetl orderNumber).
      */
     @SerializedName("kdsTicketNumber")
-    val kdsTicketNumber: String? = null
+    val kdsTicketNumber: String? = null,
+
+    /**
+     * Pozycje ticketu — zwracane inline przez GET /staff/kds/tickets.
+     * Zawsze obecne w odpowiedzi listowej. Null tylko w eventach socket.
+     */
+    @SerializedName("items")
+    val items: List<KdsTicketItem>? = null,
+
+    /**
+     * Lista wszystkich stacji z items + productions[] — breaking change kwiecień 2026 (13.4).
+     * Tablet może używać tego pola do szybkiego sprawdzenia czy dotyczy go zamówienie,
+     * zanim przefiltruje items. Null = stare API (brak pola).
+     */
+    @SerializedName("stations")
+    val stations: List<String>? = null,
+
+    /** Czy ticket dotyczy wielu stacji (skrót z API). */
+    @SerializedName("hasMultipleStations")
+    val hasMultipleStations: Boolean? = null,
+
+    /** Liczba unikalnych stacji na tym tickecie. */
+    @SerializedName("stationCount")
+    val stationCount: Int? = null
 ) {
     /**
      * Czytelny numer do wyświetlenia na KDS i w powiadomieniach.
@@ -176,12 +199,51 @@ data class KdsTicket(
     }
 
     /**
+     * Czy ten ticket jest relevantny dla tabletu o stacji [myStation].
+     * Szybki check przed kosztownym filtrowaniem items.
+     *
+     * Logika (punkt 13.3 i 13.4):
+     *  - MAIN → zawsze relevantny (widzi wszystko)
+     *  - Inne stacje → sprawdź ticket.stations[] jeśli dostępne,
+     *    lub zawsze pokaż (items i tak zostaną przefiltrowane lokalnie)
+     */
+    fun isRelevantForStation(myStation: KdsStationEnum): Boolean {
+        if (myStation == KdsStationEnum.MAIN) return true
+        // Jeśli API zwróciło stations[] — użyj do szybkiego sprawdzenia
+        val stationList = stations
+        if (!stationList.isNullOrEmpty()) {
+            return stationList.any { it.equals(myStation.apiValue, ignoreCase = true) }
+        }
+        // Brak stations[] w API (stare odpowiedzi) — pokaż, items przefiltrują się lokalnie
+        return true
+    }
+
+    /**
      * Czy zbliża się czas realizacji (0–60 min) — czas zacząć gotować.
      * Ticket automatycznie wskakuje do widoku aktywnych.
      */
     fun isScheduledSoon(nowMs: Long = System.currentTimeMillis()): Boolean {
         val mins = minutesUntilScheduled(nowMs) ?: return false
         return mins in 0..60
+    }
+
+    val isCatering: Boolean
+        get() = orderType?.equals("catering", ignoreCase = true) == true
+
+
+    /** Ile minut w przeszłości/przyszłości od zaplanowanej godziny. Ujemne = opóźnione. */
+    fun minutesFromScheduled(nowMs: Long = System.currentTimeMillis()): Long? {
+        val sf = scheduledFor ?: return null
+        return runCatching {
+            // Próba 1: Instant.parse — obsługuje Z i .000Z
+            java.time.Instant.parse(sf).toEpochMilli() - nowMs
+        }.recoverCatching {
+            // Próba 2: ZonedDateTime — obsługuje offset +02:00
+            java.time.ZonedDateTime.parse(sf).toInstant().toEpochMilli() - nowMs
+        }.recoverCatching {
+            // Próba 3: OffsetDateTime — fallback
+            java.time.OffsetDateTime.parse(sf).toInstant().toEpochMilli() - nowMs
+        }.getOrNull()?.let { it / 60_000 }
     }
 }
 

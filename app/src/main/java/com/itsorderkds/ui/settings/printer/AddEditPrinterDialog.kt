@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.itsorderkds.data.model.KdsPrinterEnum
 import com.itsorderkds.data.model.Printer
 import com.itsorderkds.data.model.PrinterConnectionType
 import com.itsorderkds.data.model.PrinterProfile
@@ -50,6 +51,7 @@ fun AddEditPrinterDialog(
     var autoCut by remember { mutableStateOf(printer?.autoCut ?: false) }
     var enabled by remember { mutableStateOf(printer?.enabled ?: true) }
     var plainTextMode by remember { mutableStateOf(printer?.plainTextMode ?: false) }
+    var selectedKdsRole by remember { mutableStateOf(printer?.kdsRole) }
 
     // Lista sparowanych urządzeń BT
     val pairedDevices = remember { getPairedBluetoothDevices(context) }
@@ -63,6 +65,7 @@ fun AddEditPrinterDialog(
     var printerTypeExpanded by remember { mutableStateOf(false) }
     var profileExpanded by remember { mutableStateOf(false) }
     var templateExpanded by remember { mutableStateOf(false) }
+    var kdsRoleExpanded by remember { mutableStateOf(false) }
 
     // --- Efekty uboczne (Logika automatyczna) ---
 
@@ -380,6 +383,87 @@ fun AddEditPrinterDialog(
                     }
                 }
 
+                // 7b. Rola drukarki w systemie KDS (filtrowanie pozycji)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text(
+                    text = "Filtrowanie pozycji KDS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Określa które pozycje zamówienia trafiają na TĘ drukarkę. " +
+                            "Np. rola KITCHEN → drukuje tylko pozycje oznaczone jako KITCHEN w API.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                ExposedDropdownMenuBox(
+                    expanded = kdsRoleExpanded,
+                    onExpandedChange = { kdsRoleExpanded = !kdsRoleExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedKdsRole?.let { "🎯 ${it.displayName} (${it.apiValue})" }
+                            ?: "⬜ Brak filtrowania (drukuj wszystkie pozycje)",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rola KDS drukarki") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(type = MenuAnchorType.PrimaryEditable, enabled = true),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kdsRoleExpanded) },
+                        supportingText = {
+                            if (selectedKdsRole != null) {
+                                Text("Drukuje pozycje z printer=\"${selectedKdsRole!!.apiValue}\" z API")
+                            } else {
+                                Text("Brak roli = drukuj wszystko (zachowanie legacy)")
+                            }
+                        }
+                    )
+                    ExposedDropdownMenu(
+                        expanded = kdsRoleExpanded,
+                        onDismissRequest = { kdsRoleExpanded = false }
+                    ) {
+                        // Opcja "brak roli" (null)
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text("⬜ Brak filtrowania")
+                                    Text(
+                                        text = "Drukuje wszystkie pozycje zamówienia",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            },
+                            onClick = {
+                                selectedKdsRole = null
+                                kdsRoleExpanded = false
+                            }
+                        )
+                        HorizontalDivider()
+                        KdsPrinterEnum.entries.forEach { role ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text("🎯 ${role.displayName} (${role.apiValue})")
+                                        Text(
+                                            text = when (role) {
+                                                KdsPrinterEnum.MAIN ->
+                                                    "Pozycje: printer=MAIN lub bez przypisania (fallback)"
+                                                else ->
+                                                    "Pozycje: printer=\"${role.apiValue}\" z API"
+                                            },
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedKdsRole = role
+                                    kdsRoleExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
                 // 8. Opcje przełączników
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -480,6 +564,7 @@ fun AddEditPrinterDialog(
                             9100
                         },
                         printerType = selectedPrinterType,
+                        kdsRole = selectedKdsRole,
                         profileId = selectedProfile.id,
                         templateId = selectedTemplate,
                         encoding = if (isCustomProfile) customEncoding else selectedProfile.encoding,

@@ -38,7 +38,9 @@ class SocketStaffEventsHandler @Inject constructor(
     private val socketEventsRepo: SocketEventsRepository,
     private val tokenProvider: TokenProvider,
     private val printerService: PrinterService,
-    private val appPreferencesManager: AppPreferencesManager
+    private val appPreferencesManager: AppPreferencesManager,
+    private val kdsRepository: com.itsorderkds.data.repository.KdsRepository,
+    private val kdsSocketEventsRepo: com.itsorderkds.service.KdsSocketEventsRepository
 ) {
     private val job = SupervisorJob()
     private val ioScope = CoroutineScope(job + Dispatchers.IO)
@@ -79,9 +81,9 @@ class SocketStaffEventsHandler @Inject constructor(
     fun register() {
         eventHandlers.forEach { (event, handler) ->
             try {
-                SocketManager.on(event.name, handler)
+                SocketManager.on(event.raw, handler)
             } catch (t: Throwable) {
-                Timber.tag(TAG).e(t, "Failed to register socket handler for ${event.name}")
+                Timber.tag(TAG).e(t, "Failed to register socket handler for ${event.raw}")
             }
         }
     }
@@ -296,6 +298,30 @@ class SocketStaffEventsHandler @Inject constructor(
                 runCatching {
                     ordersRepository.insertOrUpdateOrder(OrderMapper.fromOrder(order))
                     socketEventsRepo.emitOrder(order)
+
+                    // ✅ FALLBACK: natychmiast spróbuj dociągnąć Ticket KDS, żeby KDS UI nie musiało czekać na ew. zgubiony event `kds:ticket:created`
+                    if (isProcessing) {
+                        Timber.tag(TAG).d("🔄 Fallback: Szukam ticketu KDS dla order=${order.orderId}")
+                        kotlinx.coroutines.delay(800) // Daj backendowi ułamek sekundy na utworzenie ticketu
+                        runCatching {
+                            // Szukamy wśród ACTIVE
+                            val activeRes = kdsRepository.getTickets(state = "ACTIVE", limit = 100)
+                            if (activeRes is Resource.Success) {
+                                val found = activeRes.value.data.firstOrNull { it.orderId == order.orderId }
+                                if (found != null) {
+                                    val fullRes = kdsRepository.getTicketWithItems(found.id)
+                                    if (fullRes is Resource.Success) {
+                                        Timber.tag(TAG).d("✅ Fallback: Znalazłem full ticket KDS: ${found.id}, emituję do UI!")
+                                        kdsSocketEventsRepo.emitTicketCreated(fullRes.value)
+                                    }
+                                } else {
+                                    Timber.tag(TAG).d("⚠️ Fallback: Nie znalazłem ticketu dla orderId=${order.orderId} w stanach ACTIVE")
+                                }
+                            }
+                        }.onFailure { err ->
+                            Timber.tag(TAG).e(err, "❌ Fallback KDS fetch error")
+                        }
+                    }
 
                     // ✅ Auto-print dla nowych zamówień (PROCESSING) z DataStore
                     // WYKLUCZAMY DINE_IN/ROOM_SERVICE - są obsługiwane w OrdersViewModel

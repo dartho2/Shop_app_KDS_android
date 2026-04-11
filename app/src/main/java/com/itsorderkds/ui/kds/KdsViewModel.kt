@@ -2,8 +2,10 @@ package com.itsorderkds.ui.kds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.itsorderkds.R
 import com.itsorderkds.data.dao.OrderDao
 import com.itsorderkds.data.entity.mapper.OrderMapper
+import com.itsorderkds.data.model.KdsStationEnum
 import com.itsorderkds.data.model.KdsTicket
 import com.itsorderkds.data.model.KdsTicketItem
 import com.itsorderkds.data.model.KdsTicketWithItemsResponse
@@ -90,6 +92,7 @@ data class SlotMap(
 
 data class KdsUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,  // ciche odświeżanie — nie ukrywa bloczków
     val socketConnected: Boolean = false,
     val errorMessage: String? = null,
     /** Aktywny filtr: null = aktywne, "SCHEDULED" = zaplanowane, stan KDS = filtr stanu */
@@ -142,10 +145,14 @@ data class KdsUiState(
     val excludedKeywords: List<String> = listOf("opłata"),
     /** Skrócony bloczek kuchenny — mały nagłówek + lista pozycji bez zbędnych detali */
     val compactCardMode: Boolean = false,
+    /** Czy pokazywać sekcje productions[] w bloczkach (domyślnie false) */
+    val showProductionsInCard: Boolean = false,
     /** Czy dźwięk nowego zamówienia jest wyciszony (szybki toggle z panelu bocznego) */
     val soundMuted: Boolean = false,
     /** Czy drukowanie bloczków jest tymczasowo wstrzymane (szybki toggle z panelu bocznego) */
     val printingPaused: Boolean = false,
+    /** Stacja KDS przypisana do tego tabletu. Domyślnie MAIN = wyświetla wszystko. */
+    val kdsStation: String = "MAIN",
     /** Zestaw ticketId które mają aktualnie akcję w toku — do wizualnego blokowania przycisków */
     val inFlightIds: Set<String> = emptySet()
 )
@@ -162,6 +169,7 @@ data class KdsTicketEntry(
 class KdsViewModel @Inject constructor(
     private val kdsRepository: KdsRepository,
     private val kdsSocketEventsRepo: KdsSocketEventsRepository,
+    private val socketEventsRepo: com.itsorderkds.service.SocketEventsRepository,
     private val prefs: AppPreferencesManager,
     private val printerService: PrinterService,
     private val orderDao: OrderDao
@@ -230,6 +238,9 @@ class KdsViewModel @Inject constructor(
             val queueMode = uiState.queueMode
             val nowMs = System.currentTimeMillis()
 
+            // Stacja tego tabletu — używana do filtrowania items
+            val myStation = KdsStationEnum.fromApiValue(uiState.kdsStation)
+
             // Aktywne stany zależne od trybu
             val activeStates = if (queueMode)
                 listOf("NEW", "ACKED", "IN_PROGRESS", "READY")
@@ -244,6 +255,12 @@ class KdsViewModel @Inject constructor(
                     // Zakładka "Plan" — zamówienia zaplanowane które są DALEJ niż activeWindowMin.
                     val result = map.values
                         .filter { entry ->
+                            // Filtr stacji: dla non-MAIN tabletów pomiń tickety bez widocznych items
+                            if (myStation != KdsStationEnum.MAIN) {
+                                if (!entry.ticket.isRelevantForStation(myStation)) return@filter false
+                                val visibleItems = entry.items.filter { it.isVisibleOnStation(myStation) }
+                                if (visibleItems.isEmpty() && entry.items.isNotEmpty()) return@filter false
+                            }
                             if (!entry.ticket.isScheduled()) {
                                 Timber.tag("KDS_SCHED").d("❌ ${entry.ticket.orderNumber}: brak scheduledFor")
                                 return@filter false
@@ -264,8 +281,13 @@ class KdsViewModel @Inject constructor(
                             )
                             ok
                         }
+                        .map { entry ->
+                            // Dla non-MAIN tabletów — podmień items na przefiltrowane per stacja
+                            if (myStation == KdsStationEnum.MAIN) entry
+                            else entry.copy(items = entry.items.filter { it.isVisibleOnStation(myStation) })
+                        }
                         .sortedBy { it.ticket.scheduledFor }
-                    Timber.tag("KDS_SCHED").d("📋 SCHEDULED filter → ${result.size} ticketów (map.size=${map.size}, window=$activeWindowMin)")
+                    Timber.tag("KDS_SCHED").d("📋 SCHEDULED filter → ${result.size} ticketów (map.size=${map.size}, window=$activeWindowMin, station=${myStation.apiValue})")
                     result
                 }
                 else -> {
@@ -273,6 +295,13 @@ class KdsViewModel @Inject constructor(
                         .filter { entry ->
                             val state = entry.ticket.state
                             if (state !in activeStates) return@filter false
+
+                            // Filtr stacji: dla non-MAIN tabletów pomiń tickety bez widocznych items
+                            if (myStation != KdsStationEnum.MAIN) {
+                                if (!entry.ticket.isRelevantForStation(myStation)) return@filter false
+                                val visibleItems = entry.items.filter { it.isVisibleOnStation(myStation) }
+                                if (visibleItems.isEmpty() && entry.items.isNotEmpty()) return@filter false
+                            }
 
                             // Filtr po konkretnym stanie (np. "NEW", "READY")
                             if (filter != null) return@filter state == filter
@@ -288,6 +317,11 @@ class KdsViewModel @Inject constructor(
                                 }
                             }
                             true
+                        }
+                        .map { entry ->
+                            // Dla non-MAIN tabletów — podmień items na przefiltrowane per stacja
+                            if (myStation == KdsStationEnum.MAIN) entry
+                            else entry.copy(items = entry.items.filter { it.isVisibleOnStation(myStation) })
                         }
                         .sortedWith(
                             compareByDescending<KdsTicketEntry> { it.ticket.priority == "rush" }
@@ -363,11 +397,11 @@ class KdsViewModel @Inject constructor(
     fun refreshOnResume() {
         val nowMs = System.currentTimeMillis()
         val elapsed = nowMs - lastLoadedMs
-        if (elapsed > 30_000L) {
+        if (elapsed > 1_000L) {
             Timber.tag(TAG).i("🔄 refreshOnResume: elapsed=${elapsed}ms — odświeżam tickets")
             loadActiveTickets()
         } else {
-            Timber.tag(TAG).d("⏭ refreshOnResume: elapsed=${elapsed}ms < 30s — pomijam")
+            Timber.tag(TAG).d("⏭ refreshOnResume: elapsed=${elapsed}ms < 1s — pomijam")
         }
     }
 
@@ -425,14 +459,28 @@ class KdsViewModel @Inject constructor(
                     val pmq = p.pmq; val pc = p.pc
                     val ek = p.ek; val cc = compactCard
                 }
+            }.combine(prefs.kdsShowProductionsInCardFlow) { p, showProductions ->
+                object {
+                    val b = p.b; val e = p.e; val sw = p.sw
+                    val pmq = p.pmq; val pc = p.pc
+                    val ek = p.ek; val cc = p.cc; val sp = showProductions
+                }
             }.combine(
                 combine(prefs.kdsSoundMutedFlow, prefs.kdsPrintingPausedFlow) { sm, pp -> sm to pp }
             ) { p, (soundMuted, printingPaused) ->
                 object {
                     val b = p.b; val e = p.e; val sw = p.sw
                     val pmq = p.pmq; val pc = p.pc
-                    val ek = p.ek; val cc = p.cc
+                    val ek = p.ek; val cc = p.cc; val sp = p.sp
                     val sm = soundMuted; val pp = printingPaused
+                }
+            }.combine(prefs.kdsStationFlow) { p, station ->
+                object {
+                    val b = p.b; val e = p.e; val sw = p.sw
+                    val pmq = p.pmq; val pc = p.pc
+                    val ek = p.ek; val cc = p.cc; val sp = p.sp
+                    val sm = p.sm; val pp = p.pp
+                    val st = station
                 }
             }.collect { p ->
                 val base = p.b; val extra = p.e
@@ -440,8 +488,10 @@ class KdsViewModel @Inject constructor(
                 val prodMinQty = p.pmq; val prodCols = p.pc
                 val excludedKeywordsStr = p.ek
                 val compactCard = p.cc
+                val showProductionsInCard = p.sp
                 val soundMuted  = p.sm
                 val printingPaused = p.pp
+                val kdsStation = p.st
                 val queueMode       = base[0] as Boolean
                 val showScheduled   = base[1] as Boolean
                 val gridColumnsStr  = base[2] as String
@@ -479,8 +529,10 @@ class KdsViewModel @Inject constructor(
                         productionColumns        = prodCols,
                         excludedKeywords         = excludedKeywords,
                         compactCardMode          = compactCard,
+                        showProductionsInCard    = showProductionsInCard,
                         soundMuted               = soundMuted,
-                        printingPaused           = printingPaused
+                        printingPaused           = printingPaused,
+                        kdsStation               = kdsStation
                     )
                 }
             }
@@ -491,68 +543,59 @@ class KdsViewModel @Inject constructor(
 
     fun loadActiveTickets() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            // Pierwsze ładowanie (mapa pusta) → pokaż loader
+            // Kolejne ładowania (np. reconnect, refresh) → cicha aktualizacja bez ukrywania bloczków
+            val isFirstLoad = _ticketsMap.value.isEmpty() && !_uiState.value.socketConnected
+            if (isFirstLoad) {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            } else {
+                _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+            }
             try {
-                val states = listOf("NEW", "ACKED", "IN_PROGRESS", "READY", "ACTIVE")
                 val newMap = mutableMapOf<String, KdsTicketEntry>()
 
-                for (state in states) {
-                    when (val res = kdsRepository.getTickets(state = state, limit = 100)) {
+                // ── Jedno zapytanie: state=ACTIVE (NEW+ACKED+IN_PROGRESS) + READY ──────────
+                // API zwraca items inline w każdym tickecie — nie potrzebujemy N osobnych requestów.
+                // Parametr state=ACTIVE = NEW | ACKED | IN_PROGRESS (stan wirtualny z API)
+                val activeStates = listOf("ACTIVE", "READY")
+                for (state in activeStates) {
+                    when (val res = kdsRepository.getTickets(state = state, limit = 200)) {
                         is Resource.Success -> {
                             res.value.data.forEach { ticket ->
-                                // Zachowaj istniejące items jako fallback (np. z wcześniejszego socket eventu)
-                                val existingItems = _ticketsMap.value[ticket.id]?.items ?: emptyList()
-
-                                when (val itemsRes = kdsRepository.getTicketWithItems(ticket.id)) {
-                                    is Resource.Success -> {
-                                        val fetchedItems = itemsRes.value.items
-                                        // WAŻNE: jeśli API zwróciło pustą listę items (race condition
-                                        // podczas tworzenia ticketu) — zachowaj istniejące items z mapy.
-                                        // Zapobiega to "pustym bloczkom" gdy API jeszcze nie ma items.
-                                        val finalItems = if (fetchedItems.isEmpty() && existingItems.isNotEmpty()) {
-                                            Timber.tag(TAG).w(
-                                                "⚠️ API zwróciło 0 items dla ${ticket.id} " +
-                                                "(existingItems=${existingItems.size}) — zachowuję istniejące"
-                                            )
-                                            existingItems
-                                        } else {
-                                            fetchedItems
-                                        }
-                                        newMap[ticket.id] = KdsTicketEntry(
-                                            ticket = itemsRes.value.ticket,
-                                            items  = finalItems
-                                        )
-                                    }
-                                    is Resource.Failure -> {
-                                        // HTTP fail — zachowaj istniejące items (mogą być z socket)
-                                        Timber.tag(TAG).w(
-                                            "⚠️ getTicketWithItems failed for ${ticket.id}: ${itemsRes.errorMessage} " +
-                                            "— keeping ${existingItems.size} existing items"
-                                        )
-                                        newMap[ticket.id] = KdsTicketEntry(ticket = ticket, items = existingItems)
+                                val existingItems = _ticketsMap.value[ticket.id]?.items ?: emptyList<KdsTicketItem>()
+                                // API zwraca items inline w KdsTicket.items
+                                val inlineItems: List<KdsTicketItem> = ticket.items ?: emptyList()
+                                val finalItems = when {
+                                    inlineItems.isNotEmpty() -> inlineItems
+                                    existingItems.isNotEmpty() -> {
+                                        Timber.tag(TAG).w("⚠️ inline items puste dla ${ticket.id} — zachowuję ${existingItems.size} z cache")
+                                        existingItems
                                     }
                                     else -> {
-                                        newMap[ticket.id] = KdsTicketEntry(ticket = ticket, items = existingItems)
+                                        // Ostatnia deska — pobierz osobno (tylko gdy inline puste i cache puste)
+                                        when (val r = kdsRepository.getTicketWithItems(ticket.id)) {
+                                            is Resource.Success -> r.value.items
+                                            else -> emptyList()
+                                        }
                                     }
                                 }
+                                newMap[ticket.id] = KdsTicketEntry(ticket = ticket, items = finalItems)
                             }
+                            Timber.tag(TAG).d("✅ state=$state → ${res.value.data.size} ticketów")
                         }
                         is Resource.Failure -> {
-                            Timber.tag(TAG).w("Failed to load tickets (state=$state): ${res.errorMessage}")
+                            Timber.tag(TAG).w("❌ getTickets(state=$state): ${res.errorMessage}")
                         }
                         else -> Unit
                     }
                 }
 
-                // WAŻNE: Scal nową mapę z istniejącą, zamiast całkowicie zastępować.
-                // Zachowuje tickets które dotarły przez socket PODCZAS ładowania
-                // i nie weszły jeszcze do nowej mapy (np. ticket stworzony podczas fetch).
+                // ── Scal z istniejącą mapą (zachowaj socket-tickety które przyszły podczas fetch) ──
                 val currentMap = _ticketsMap.value
                 val mergedMap = currentMap.toMutableMap()
+
                 newMap.forEach { (id, entry) ->
                     val current = mergedMap[id]
-                    // Jeśli nowy entry ma więcej items niż obecny — użyj nowego
-                    // Jeśli obecny ma więcej items (z socket) — zachowaj obecne items
                     if (current != null && entry.items.isEmpty() && current.items.isNotEmpty()) {
                         mergedMap[id] = entry.copy(items = current.items)
                         Timber.tag(TAG).d("🔀 Merge: zachowuję ${current.items.size} items z socket dla $id")
@@ -560,12 +603,10 @@ class KdsViewModel @Inject constructor(
                         mergedMap[id] = entry
                     }
                 }
-                // Usuń z mapy tickety które zniknęły z aktywnych (zmieniły stan)
-                // ale zachowaj te które nie były w zapytaniu (np. właśnie przyszły przez socket)
+
+                // Usuń tickety w stanie końcowym których nie ma w nowym loadu
                 val loadedIds = newMap.keys
-                val socketRecentIds = mergedMap.keys - loadedIds
-                // Tickety z socket (nie w odpowiedzi HTTP) — usuń tylko jeśli są w stanie końcowym
-                socketRecentIds.forEach { id ->
+                (mergedMap.keys - loadedIds).forEach { id ->
                     val entry = mergedMap[id]
                     if (entry != null && entry.ticket.state in listOf("HANDED_OFF", "CANCELLED")) {
                         mergedMap.remove(id)
@@ -573,20 +614,16 @@ class KdsViewModel @Inject constructor(
                 }
 
                 _ticketsMap.value = mergedMap
-
-                // Zapisz czas ostatniego załadowania (dla throttlowania refreshOnResume)
                 lastLoadedMs = System.currentTimeMillis()
-
-                // Przebuduj slotMapę po pełnym odświeżeniu
                 rebuildSlotMap()
 
-                Timber.tag(TAG).i("✅ Loaded ${newMap.size} tickets (merged: ${mergedMap.size})")
+                Timber.tag(TAG).i("✅ loadActiveTickets: ${newMap.size} załadowanych, ${mergedMap.size} w mapie")
                 checkScheduledAlerts()
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Error loading active tickets")
                 _uiState.update { it.copy(errorMessage = e.message) }
             } finally {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isLoading = false, isRefreshing = false) }
             }
         }
     }
@@ -625,6 +662,18 @@ class KdsViewModel @Inject constructor(
                 Timber.tag(TAG).i("🆕 Socket: KDS_TICKET_CREATED ${response.ticket.id}")
                 addOrUpdateTicketEntry(response)
                 _events.tryEmit(KdsEvent.NewTicket(response.ticket.displayNumber))
+            }
+        }
+
+        // Nasłuchuj zamówień na wypadek, gdyby serwer nie wysłał zdarzenia kds:ticket:created
+        viewModelScope.launch {
+            socketEventsRepo.orders.collect { order ->
+                if (order.orderStatus.slug == "PROCESSING" || order.orderStatus.slug == "NEW") {
+                    Timber.tag(TAG).i("🔄 Otrzymano ORDER z socketEventsRepo: ${order.orderId}, wywołuję ciche ładowanie (fallback KDS)")
+                    // Dajemy małemu opóźnieniu szansę na dotarcie dedykowanego zdarzenia kds:ticket:created
+                    kotlinx.coroutines.delay(500)
+                    loadActiveTickets()
+                }
             }
         }
 
@@ -668,7 +717,11 @@ class KdsViewModel @Inject constructor(
             kdsSocketEventsRepo.connection.collect { connected ->
                 _uiState.update { it.copy(socketConnected = connected) }
                 if (connected) {
-                    Timber.tag(TAG).i("🔌 Socket reconnected - refreshing tickets")
+                    Timber.tag(TAG).i("🔌 Socket reconnected - odczekaj 2s przed refresh")
+                    // Opóźnienie 2s po reconnect — dajemy czas na to żeby socket events
+                    // dotarły przed fetchem (zapobiega race condition: nowy ticket z socketu
+                    // może jeszcze nie być widoczny przez API zaraz po połączeniu)
+                    kotlinx.coroutines.delay(2_000)
                     loadActiveTickets()
                 }
             }
@@ -959,8 +1012,13 @@ class KdsViewModel @Inject constructor(
                 val entry = _ticketsMap.value[ticketId] ?: return@launch
                 val entity = orderDao.getOrderById(entry.ticket.orderId) ?: return@launch
                 val order = OrderMapper.toOrder(entity)
-                // Przekaż items — PrinterService użyje ich gdy szablon = KITCHEN_ONLY
-                printerService.printOnTicketStatusChangeWithItems(order, state, entry.items)
+                // Przekaż items oraz kdsTicketNumber — PrinterService użyje ich gdy szablon = KITCHEN_ONLY
+                printerService.printOnTicketStatusChangeWithItems(
+                    order            = order,
+                    newState         = state,
+                    items            = entry.items,
+                    kdsTicketNumber  = entry.ticket.kdsTicketNumber
+                )
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "❌ printByRuleForTicket: $ticketId state=$state")
             }
@@ -994,8 +1052,14 @@ class KdsViewModel @Inject constructor(
 
                 val order = OrderMapper.toOrder(entity)
                 Timber.tag(TAG).d("🖨️ Zamówienie znalezione: #${order.orderNumber} — startuję druk")
-                // Przekaż items aby drukarka mogła filtrować KITCHEN_ONLY
-                printerService.printKitchenTicketWithItems(order, entry.items, useDeliveryInterval = false)
+                // Przekaż items oraz kdsTicketNumber aby drukarka mogła filtrować KITCHEN_ONLY
+                // i pokazywać właściwy numer w nagłówku bloczka
+                printerService.printKitchenTicketWithItems(
+                    order            = order,
+                    items            = entry.items,
+                    useDeliveryInterval = false,
+                    kdsTicketNumber  = entry.ticket.kdsTicketNumber
+                )
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "❌ Błąd drukowania bloczka dla ticketu $ticketId")
             }

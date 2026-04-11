@@ -406,6 +406,9 @@ fun MainSettingsScreen(
     val kdsScheduledActiveWindow   by viewModel.kdsScheduledActiveWindow.collectAsStateWithLifecycle()
     val kdsExcludedKeywords        by viewModel.kdsExcludedKeywords.collectAsStateWithLifecycle()
     val kdsCompactCardMode         by viewModel.kdsCompactCardMode.collectAsStateWithLifecycle()
+    val kdsShowProductionsInCard   by viewModel.kdsShowProductionsInCard.collectAsStateWithLifecycle()
+    val kdsPrintKitchenMainProduct by viewModel.kdsPrintKitchenMainProduct.collectAsStateWithLifecycle()
+    val kdsStation                 by viewModel.kdsStation.collectAsStateWithLifecycle()
     // Lokalna kopia do edycji w TextField — synchronizowana z Flow
     var kdsExcludedKeywordsEdit by remember(kdsExcludedKeywords) { mutableStateOf(kdsExcludedKeywords) }
 
@@ -419,6 +422,28 @@ fun MainSettingsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 color = MaterialTheme.colorScheme.primary
             )
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text("Stacja KDS (filtrowanie bloczków)", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Wybierz którą stacją jest ten tablet. MAIN widzi wszystko, sekcje widzą tylko swoje pozycje.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    com.itsorderkds.data.model.KdsStationEnum.entries.forEach { station ->
+                        FilterChip(
+                            selected = kdsStation == station.apiValue,
+                            onClick  = { viewModel.setKdsStation(station.apiValue) },
+                            label    = { Text(station.displayName) }
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, start = 16.dp))
         }
         item {
             SettingsItemWithSwitch(
@@ -601,6 +626,24 @@ fun MainSettingsScreen(
                 subtitle  = "Skrócony widok: numer wew., numer zew., źródło, typ zamówienia i lista pozycji. Mniej miejsca, więcej bloczków na ekranie.",
                 isEnabled = kdsCompactCardMode,
                 onToggle  = { viewModel.setKdsCompactCardMode(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Settings,
+                title     = "Pokazuj productions w bloczkach ekranu",
+                subtitle  = "Wyświetla sekcje produkcyjne (productions[]) pod każdą pozycją na tablecie. Domyślnie wyłączone — te dane zazwyczaj trafiają na wydruk kuchenny.",
+                isEnabled = kdsShowProductionsInCard,
+                onToggle  = { viewModel.setKdsShowProductionsInCard(it) }
+            )
+        }
+        item {
+            SettingsItemWithSwitch(
+                icon      = Icons.Default.Print,
+                title     = "Drukuj główne sekcje na kuchnię",
+                subtitle  = "Zdecyduje czy np. --- Ramen --- powinno nad pozycjami z produkcji drukować się na wydruku do kuchni (domyślnie wyłączone).",
+                isEnabled = kdsPrintKitchenMainProduct,
+                onToggle  = { viewModel.setKdsPrintKitchenMainProduct(it) }
             )
         }
 
@@ -1222,5 +1265,4 @@ private fun openAppSettings(context: android.content.Context) {
     intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(intent)
 }
-
 

@@ -101,6 +101,13 @@ class AppPreferencesManager @Inject constructor(
         val KDS_PRODUCTION_COLUMNS  = intPreferencesKey("kds_production_columns")          // Production Summary: liczba kolumn (1 lub 2)
         val KDS_EXCLUDED_KEYWORDS   = stringPreferencesKey("kds_excluded_keywords")        // Słowa kluczowe do ukrywania produktw (przecinkami), domyślnie "opłata"
         val KDS_COMPACT_CARD_MODE   = booleanPreferencesKey("kds_compact_card_mode")       // Skrócony bloczek kuchenny (mniej miejsca, więcej informacji)
+        val KDS_SHOW_PRODUCTIONS_IN_CARD = booleanPreferencesKey("kds_show_productions_in_card") // Czy pokazywać sekcje productions w bloczkach (domyślnie false)
+        val KDS_PRINT_KITCHEN_MAIN_PRODUCT = booleanPreferencesKey("kds_print_kitchen_main_product") // Czy drukować główne nazwy w kuchennym (domyślnie false)
+
+        // KDS Device Station — stacja KDS przypisana do tego tabletu
+        // Jeśli nie ustawiona (null / "MAIN") → domyślna stacja MAIN
+        // Wartości: "MAIN" | "KITCHEN" | "SUSHI" | "BAR" | "DESSERT"
+        val KDS_STATION = stringPreferencesKey("kds_station")
 
         // KDS Quick Toggles (szybkie przełączniki z panelu bocznego)
         val KDS_SOUND_MUTED        = booleanPreferencesKey("kds_sound_muted")              // czy dźwięk nowego zamówienia jest wyciszony
@@ -670,6 +677,32 @@ class AppPreferencesManager @Inject constructor(
         dataStore.edit { it[Keys.KDS_COMPACT_CARD_MODE] = enabled }
     }
 
+    /**
+     * Czy pokazywać sekcje productions[] w bloczkach KDS.
+     * Domyślnie false — sekcje produkcyjne są potrzebne na wydruku kuchennym,
+     * ale na ekranie mogą zaśmiecać widok.
+     */
+    val kdsShowProductionsInCardFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_SHOW_PRODUCTIONS_IN_CARD] ?: false }.distinctUntilChanged()
+
+    suspend fun setKdsShowProductionsInCard(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_SHOW_PRODUCTIONS_IN_CARD] = enabled }
+    }
+
+    /**
+     * Czy drukować główne nazwy produktów na paragonach kuchennych
+     * jeśli posiadają produkcje cząstkowe. Domyślnie false.
+     */
+    val kdsPrintKitchenMainProductFlow: Flow<Boolean> = dataStore.data
+        .map { it[Keys.KDS_PRINT_KITCHEN_MAIN_PRODUCT] ?: false }.distinctUntilChanged()
+
+    suspend fun getKdsPrintKitchenMainProduct(): Boolean =
+        dataStore.data.map { it[Keys.KDS_PRINT_KITCHEN_MAIN_PRODUCT] ?: false }.first()
+
+    suspend fun setKdsPrintKitchenMainProduct(enabled: Boolean) {
+        dataStore.edit { it[Keys.KDS_PRINT_KITCHEN_MAIN_PRODUCT] = enabled }
+    }
+
     /** Szybkie wyciszenie dźwięku nowego zamówienia z panelu bocznego KDS. */
     val kdsSoundMutedFlow: Flow<Boolean> = dataStore.data
         .map { it[Keys.KDS_SOUND_MUTED] ?: false }.distinctUntilChanged()
@@ -695,6 +728,22 @@ class AppPreferencesManager @Inject constructor(
 
     suspend fun setKdsPrintingPaused(paused: Boolean) {
         dataStore.edit { it[Keys.KDS_PRINTING_PAUSED] = paused }
+    }
+
+    /**
+     * Stacja KDS przypisana do tego tabletu.
+     * Domyślnie MAIN — tablet wyświetla wszystkie pozycje (bez filtrowania po stacji).
+     * Gdy ustawiona na np. SUSHI — tablet wyświetla TYLKO pozycje z station=SUSHI.
+     * Wartości: "MAIN" | "KITCHEN" | "SUSHI" | "BAR" | "DESSERT"
+     */
+    val kdsStationFlow: Flow<String> = dataStore.data
+        .map { it[Keys.KDS_STATION] ?: "MAIN" }.distinctUntilChanged()
+
+    suspend fun getKdsStation(): String =
+        dataStore.data.map { it[Keys.KDS_STATION] ?: "MAIN" }.first()
+
+    suspend fun setKdsStation(station: String) {
+        dataStore.edit { it[Keys.KDS_STATION] = station.uppercase() }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

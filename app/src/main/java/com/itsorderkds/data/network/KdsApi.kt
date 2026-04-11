@@ -18,10 +18,13 @@ interface KdsApi {
      */
     @GET("client/v3/api/staff/kds/tickets")
     suspend fun getTickets(
-        @Query("state") state: String? = null,        // NEW, ACKED, IN_PROGRESS, READY, etc.
-        @Query("from") from: String? = null,          // ISO 8601
-        @Query("to") to: String? = null,              // ISO 8601
-        @Query("priority") priority: String? = null,  // normal | rush
+        @Query("state") state: String? = null,               // NEW, ACKED, IN_PROGRESS, READY, ACTIVE, etc.
+        @Query("from") from: String? = null,                 // ISO 8601
+        @Query("to") to: String? = null,                     // ISO 8601
+        @Query("priority") priority: String? = null,         // normal | rush
+        @Query("station") station: String? = null,           // MAIN | KITCHEN | SUSHI | BAR | DESSERT
+        @Query("printer") printer: String? = null,           // MAIN | KITCHEN | SUSHI | BAR | DESSERT
+        @Query("scheduledOnly") scheduledOnly: Boolean? = null, // true = tylko zaplanowane
         @Query("limit") limit: Int? = 100,
         @Query("skip") skip: Int? = 0
     ): Response<KdsTicketsResponse>

@@ -371,8 +371,6 @@ fun MainAppContainer(
     onLogout: () -> Unit,
     onNavControllerReady: (NavHostController) -> Unit = {}
 ) {
-    val kdsViewModel: com.itsorderkds.ui.kds.KdsViewModel = hiltViewModel()
-    val kdsUiState by kdsViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()
 
     // 🎯 Pobierz aktualną route

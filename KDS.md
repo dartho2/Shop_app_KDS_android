@@ -65,9 +65,9 @@ Payload JWT zawiera: `id`, `role`, `tenantKey`.
 
 ```json
 {
-  "auth": {
-    "token": "<token_jwt>"
-  }
+   "auth": {
+      "token": "<token_jwt>"
+   }
 }
 ```
 
@@ -259,21 +259,21 @@ GET /api/staff/kds/tickets?state=NEW&limit=50
 **Odpowiedź `200 OK`:**
 ```json
 {
-  "data": [
-    {
-      "_id": "6617a3f2e4b0c1234567890a",
-      "orderId": "6617a3f1e4b0c1234567890b",
-      "orderNumber": "order-42",
-      "source": "checkout",
-      "priority": "normal",
-      "state": "NEW",
-      "note": "Bez cebuli",
-      "slaTargetAt": "2026-04-04T12:30:00.000Z",
-      "createdAt": "2026-04-04T12:15:00.000Z",
-      "updatedAt": "2026-04-04T12:15:00.000Z"
-    }
-  ],
-  "count": 1
+   "data": [
+      {
+         "_id": "6617a3f2e4b0c1234567890a",
+         "orderId": "6617a3f1e4b0c1234567890b",
+         "orderNumber": "order-42",
+         "source": "checkout",
+         "priority": "normal",
+         "state": "NEW",
+         "note": "Bez cebuli",
+         "slaTargetAt": "2026-04-04T12:30:00.000Z",
+         "createdAt": "2026-04-04T12:15:00.000Z",
+         "updatedAt": "2026-04-04T12:15:00.000Z"
+      }
+   ],
+   "count": 1
 }
 ```
 
@@ -291,33 +291,33 @@ GET /api/staff/kds/tickets/6617a3f2e4b0c1234567890a
 **Odpowiedź `200 OK`:**
 ```json
 {
-  "ticket": {
-    "_id": "6617a3f2e4b0c1234567890a",
-    "orderNumber": "order-42",
-    "state": "NEW",
-    "slaTargetAt": "2026-04-04T12:30:00.000Z",
-    "createdAt": "2026-04-04T12:15:00.000Z"
-  },
-  "items": [
-    {
-      "_id": "6617a3f3e4b0c1234567890c",
-      "ticketId": "6617a3f2e4b0c1234567890a",
-      "displayName": "Burger Klasyczny",
-      "qty": 2,
-      "state": "QUEUED",
-      "notes": ["Bez majonezu"],
-      "sequence": 0
-    },
-    {
-      "_id": "6617a3f3e4b0c1234567890d",
-      "ticketId": "6617a3f2e4b0c1234567890a",
-      "displayName": "Frytki",
-      "qty": 2,
-      "state": "QUEUED",
-      "notes": [],
-      "sequence": 1
-    }
-  ]
+   "ticket": {
+      "_id": "6617a3f2e4b0c1234567890a",
+      "orderNumber": "order-42",
+      "state": "NEW",
+      "slaTargetAt": "2026-04-04T12:30:00.000Z",
+      "createdAt": "2026-04-04T12:15:00.000Z"
+   },
+   "items": [
+      {
+         "_id": "6617a3f3e4b0c1234567890c",
+         "ticketId": "6617a3f2e4b0c1234567890a",
+         "displayName": "Burger Klasyczny",
+         "qty": 2,
+         "state": "QUEUED",
+         "notes": ["Bez majonezu"],
+         "sequence": 0
+      },
+      {
+         "_id": "6617a3f3e4b0c1234567890d",
+         "ticketId": "6617a3f2e4b0c1234567890a",
+         "displayName": "Frytki",
+         "qty": 2,
+         "state": "QUEUED",
+         "notes": [],
+         "sequence": 1
+      }
+   ]
 }
 ```
 
@@ -341,18 +341,18 @@ Pobiera historię akcji dla ticketu.
 **Odpowiedź `200 OK`:**
 ```json
 {
-  "data": [
-    {
-      "_id": "...",
-      "ticketId": "6617a3f2e4b0c1234567890a",
-      "actionType": "TICKET_STARTED",
-      "actorId": "user123",
-      "actorRole": "STAFF",
-      "before": { "state": "ACKED" },
-      "after": { "state": "IN_PROGRESS" },
-      "createdAt": "2026-04-04T12:17:00.000Z"
-    }
-  ]
+   "data": [
+      {
+         "_id": "...",
+         "ticketId": "6617a3f2e4b0c1234567890a",
+         "actionType": "TICKET_STARTED",
+         "actorId": "user123",
+         "actorRole": "STAFF",
+         "before": { "state": "ACKED" },
+         "after": { "state": "IN_PROGRESS" },
+         "createdAt": "2026-04-04T12:17:00.000Z"
+      }
+   ]
 }
 ```
 
@@ -371,22 +371,22 @@ Pobiera listę aktywnych stanowisk kuchni.
 **Odpowiedź `200 OK`:**
 ```json
 {
-  "data": [
-    {
-      "_id": "6617b1a2e4b0c1234567890e",
-      "code": "GRILL",
-      "name": "Grill",
-      "isActive": true,
-      "displayOrder": 1
-    },
-    {
-      "_id": "6617b1a2e4b0c1234567890f",
-      "code": "FRYER",
-      "name": "Frytkownica",
-      "isActive": true,
-      "displayOrder": 2
-    }
-  ]
+   "data": [
+      {
+         "_id": "6617b1a2e4b0c1234567890e",
+         "code": "GRILL",
+         "name": "Grill",
+         "isActive": true,
+         "displayOrder": 1
+      },
+      {
+         "_id": "6617b1a2e4b0c1234567890f",
+         "code": "FRYER",
+         "name": "Frytkownica",
+         "isActive": true,
+         "displayOrder": 2
+      }
+   ]
 }
 ```
 
@@ -494,9 +494,9 @@ Utwórz nową stację.
 **Body:**
 ```json
 {
-  "code": "SUSHI",
-  "name": "Sushi bar",
-  "displayOrder": 3
+   "code": "SUSHI",
+   "name": "Sushi bar",
+   "displayOrder": 3
 }
 ```
 
@@ -510,9 +510,9 @@ Aktualizuj stację (wszystkie pola opcjonalne).
 
 ```json
 {
-  "name": "Nowa nazwa",
-  "isActive": false,
-  "displayOrder": 5
+   "name": "Nowa nazwa",
+   "isActive": false,
+   "displayOrder": 5
 }
 ```
 
@@ -542,8 +542,8 @@ Usuń stację.
 **Format błędu:**
 ```json
 {
-  "message": "Niedozwolona zmiana stanu: READY -> CANCELLED",
-  "codeStatus": "invalid_transition"
+   "message": "Niedozwolona zmiana stanu: READY -> CANCELLED",
+   "codeStatus": "invalid_transition"
 }
 ```
 
@@ -560,9 +560,9 @@ wss://{tenant-domain}/staff
 **Przykład konfiguracji (pseudokod Android/Kotlin):**
 ```kotlin
 val socket = IO.socket("https://api.tenantdomain.pl", IO.Options().apply {
-    path = "/socket.io"
-    transports = arrayOf("websocket")
-    auth = mapOf("token" to jwtToken)
+   path = "/socket.io"
+   transports = arrayOf("websocket")
+   auth = mapOf("token" to jwtToken)
 })
 socket.connect()
 ```
@@ -588,12 +588,12 @@ Nowy ticket pojawił się w kuchni. Emitowany automatycznie gdy nowe zamówienie
 **Payload:**
 ```json
 {
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "orderId": "6617a3f1e4b0c1234567890b",
-  "orderNumber": "order-42",
-  "state": "NEW",
-  "itemCount": 3,
-  "slaTargetAt": "2026-04-04T12:30:00.000Z"
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "orderId": "6617a3f1e4b0c1234567890b",
+   "orderNumber": "order-42",
+   "state": "NEW",
+   "itemCount": 3,
+   "slaTargetAt": "2026-04-04T12:30:00.000Z"
 }
 ```
 
@@ -608,9 +608,9 @@ Ticket potwierdzony przez kucharza.
 **Payload:**
 ```json
 {
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "ACKED",
-  "actorId": "user123"
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "ACKED",
+   "actorId": "user123"
 }
 ```
 
@@ -623,10 +623,10 @@ Przygotowanie rozpoczęte.
 **Payload:**
 ```json
 {
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "IN_PROGRESS",
-  "startedAt": "2026-04-04T12:17:00.000Z",
-  "actorId": "user123"
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "IN_PROGRESS",
+   "startedAt": "2026-04-04T12:17:00.000Z",
+   "actorId": "user123"
 }
 ```
 
@@ -639,10 +639,10 @@ Ticket gotowy do wydania.
 **Payload:**
 ```json
 {
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "READY",
-  "readyAt": "2026-04-04T12:25:00.000Z",
-  "actorId": "user123"
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "READY",
+   "readyAt": "2026-04-04T12:25:00.000Z",
+   "actorId": "user123"
 }
 ```
 
@@ -655,10 +655,10 @@ Zamówienie wydane.
 **Payload:**
 ```json
 {
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "HANDED_OFF",
-  "handedOffAt": "2026-04-04T12:26:00.000Z",
-  "actorId": "user123"
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "HANDED_OFF",
+   "handedOffAt": "2026-04-04T12:26:00.000Z",
+   "actorId": "user123"
 }
 ```
 
@@ -671,10 +671,10 @@ Ticket anulowany.
 **Payload:**
 ```json
 {
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "CANCELLED",
-  "reason": "Klient zrezygnował",
-  "actorId": "user123"
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "CANCELLED",
+   "reason": "Klient zrezygnował",
+   "actorId": "user123"
 }
 ```
 
@@ -687,11 +687,11 @@ Pozycja w trakcie gotowania.
 **Payload:**
 ```json
 {
-  "itemId": "6617a3f3e4b0c1234567890c",
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "COOKING",
-  "firedAt": "2026-04-04T12:17:30.000Z",
-  "actorId": "user123"
+   "itemId": "6617a3f3e4b0c1234567890c",
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "COOKING",
+   "firedAt": "2026-04-04T12:17:30.000Z",
+   "actorId": "user123"
 }
 ```
 
@@ -704,11 +704,11 @@ Pozycja gotowa.
 **Payload:**
 ```json
 {
-  "itemId": "6617a3f3e4b0c1234567890c",
-  "ticketId": "6617a3f2e4b0c1234567890a",
-  "state": "READY",
-  "doneAt": "2026-04-04T12:24:00.000Z",
-  "actorId": "user123"
+   "itemId": "6617a3f3e4b0c1234567890c",
+   "ticketId": "6617a3f2e4b0c1234567890a",
+   "state": "READY",
+   "doneAt": "2026-04-04T12:24:00.000Z",
+   "actorId": "user123"
 }
 ```
 
@@ -927,8 +927,8 @@ Tablet 2 (ekspedycja): ← odbiera KDS_TICKET_READY, pokazuje alert "Zamówienie
 2. **Pobierz aktywne tickety** → `GET /api/staff/kds/tickets?state=NEW,ACKED,IN_PROGRESS,READY`
 3. **Połącz Socket.IO** z namespace `/staff`, auth: `{ token: jwt }`
 4. **Nasłuchuj**:
-    - `KDS_TICKET_CREATED` → fetch ticket + items, dodaj do widoku
-    - `KDS_TICKET_*`, `KDS_ITEM_*` → zaktualizuj stan lokalnie
+   - `KDS_TICKET_CREATED` → fetch ticket + items, dodaj do widoku
+   - `KDS_TICKET_*`, `KDS_ITEM_*` → zaktualizuj stan lokalnie
 5. **Wysyłaj komendy** odpowiednimi POST-ami z nagłówkiem `Idempotency-Key`
 
 ### Zależności przydatne w Android
@@ -944,4 +944,179 @@ Tablet 2 (ekspedycja): ← odbiera KDS_TICKET_READY, pokazuje alert "Zamówienie
 
 ---
 
-*Dokument opisuje stan implementacji po Etap 1. Kolejne etapy (station routing, namespace /kds, SLA alerting, drukarki) będą opisane w osobnych dokumentach.*
+*Dokument opisuje stan implementacji po Etap 1. Kolejne etapy (namespace /kds, SLA alerting) będą opisane w osobnych dokumentach.*
+
+---
+
+## 13. Zmiany — kwiecień 2026 (breaking changes)
+
+> Poniższe zmiany dotyczą modelu `KdsTicketItem` oraz logiki tworzenia ticketów.  
+> **Wymagana aktualizacja kodu Android** — nowe pola + zmiana logiki renderowania kart.
+
+---
+
+### 13.1. Nowe pola w `KdsTicketItem`
+
+Model `KdsTicketItem` (sekcja 3.2) rozszerzono o trzy nowe pola:
+
+```kotlin
+data class KdsTicketItem(
+    val _id: String,
+    val ticketId: String,
+    val orderId: String,
+    val productId: String?,
+    val sku: String?,
+    val posId: String?,
+
+    // NOWE POLA:
+    val productName: String?,          // Nazwa produktu (zawsze = product.name)
+    val station: String?,              // Stacja KDS: "MAIN" | "KITCHEN" | "SUSHI" | "BAR" | "DESSERT"
+    val printer: String?,              // Drukarka: "MAIN" | "KITCHEN" | "SUSHI" | "BAR" | "DESSERT" | null
+    val productions: List<KdsProductionTask>?,  // Sekcje produkcyjne, null jeśli brak
+
+    // ISTNIEJĄCE POLA (bez zmian):
+    val displayName: String,
+    val qty: Int,
+    val state: String,
+    val notes: List<String>,
+    val firedAt: String?,
+    val doneAt: String?,
+    val sequence: Int,
+    val createdAt: String,
+    val updatedAt: String
+)
+
+data class KdsProductionTask(
+    val station: String?,   // Stacja dla tej sekcji
+    val printer: String?,   // Drukarka dla tej sekcji
+    val label: String?,     // Nazwa sekcji (np. "Krewetka w tempurze")
+    val qty: Int            // Ilość = zamówiona_ilość × task.quantity
+)
+```
+
+---
+
+### 13.2. Zmiana logiki: 1 item per produkt (zamiast N itemów per sekcja)
+
+**Poprzednie zachowanie (stare — już nie obowiązuje):**  
+Produkt z `production[]` (np. 2 sekcje) generował **2 oddzielne `KdsTicketItem`** — jeden per sekcja. Każdy miał inny `displayName` (z `task.label`) i inne `station`.
+
+**Nowe zachowanie:**  
+Każdy produkt generuje **zawsze dokładnie 1 `KdsTicketItem`**, niezależnie od liczby sekcji produkcyjnych.
+- `displayName` = nazwa produktu (zawsze, nigdy nie jest zastępowany przez `task.label`)
+- `qty` = zamówiona ilość produktu
+- `station` = główna stacja produktu (z `product.station` lub pierwszego taska)
+- `productions[]` = lista wszystkich sekcji z wyliczonymi ilościami
+
+**Przykład — zamówienie: Hosomaki Tamago ×2** (produkt ma 2 sekcje produkcyjne):
+
+```json
+// STARY format (już nie zwracany) — 2 itemy:
+[
+  { "displayName": "Krewetka w tempurze", "qty": 4, "station": "KITCHEN" },
+  { "displayName": "Łosoś pieczony",      "qty": 12, "station": "KITCHEN" }
+]
+
+// NOWY format — 1 item z productions[]:
+[
+  {
+    "displayName": "Hosomaki Tamago",
+    "productName": "Hosomaki Tamago",
+    "qty": 2,
+    "station": "KITCHEN",
+    "printer": "KITCHEN",
+    "productions": [
+      { "label": "Krewetka w tempurze", "station": "KITCHEN", "printer": "KITCHEN", "qty": 4  },
+      { "label": "Łosoś pieczony",      "station": "KITCHEN", "printer": "KITCHEN", "qty": 12 }
+    ]
+  }
+]
+```
+
+---
+
+### 13.3. Stacja jako filtr po stronie aplikacji (nie parametr URL)
+
+**Poprzednie podejście:** przekazywano `?station=KITCHEN` jako query param, serwer filtrował items.
+
+**Nowe rekomendowane podejście:** pobieraj wszystkie items bez `?station`, filtruj lokalnie po `item.station`.
+
+```kotlin
+val myStation = "KITCHEN" // ustawienie tabletu zapisane lokalnie
+
+// Filtrowanie po stronie Android:
+val visibleItems = ticket.items.filter { it.station == myStation }
+// Dla tabletu MAIN: brak filtrowania, pokaż wszystkie items
+```
+
+> Parametr `?station=SUSHI` nadal działa serwerowo (nie usunięty) — ale filtrowanie po stronie aplikacji jest prostsze i nie wymaga dodatkowych requestów.
+
+---
+
+### 13.4. Nowe pole `station` i `printer` na tickecie (`stations[]`)
+
+`KdsTicket` ma teraz zaktualizowane pole `stations[]` — zawiera **wszystkie stacje** ze wszystkich items włącznie z sekcjami z `productions[]`.
+
+```json
+{
+  "hasMultipleStations": true,
+  "stationCount": 2,
+  "stations": ["MAIN", "KITCHEN"]
+}
+```
+
+Tablet może używać `ticket.stations` do szybkiego sprawdzenia czy dotyczy go to zamówienie, przed przefiltrowaniem items.
+
+---
+
+### 13.5. Zaktualizowana logika renderowania karty produktu
+
+| Tryb tabletu | Logika |
+|---|---|
+| **Tablet MAIN** | Pokaż wszystkie items. Nagłówek karty = `item.displayName` + `item.qty`. Poniżej sekcje z `item.productions[]` (label + qty). |
+| **Tablet KITCHEN / SUSHI / BAR** | Filtruj items: `item.station === myStation`. Nagłówek = `item.displayName` + `item.qty`. Sekcje z `productions[]` jako szczegóły (opcjonalnie). |
+| **Drukarka etykiet** | Filtruj items: `item.printer === myPrinter`. Drukuj `displayName` + sekcje z `productions[]`. |
+
+**Przykład renderowania dla tabletu KITCHEN** (zamówienie z sekcji 13.2):
+
+```
+┌─ Hosomaki Tamago ×2 ───────────────────┐
+│  QUEUED                                │
+│  ─────────────────────────────────     │
+│  Krewetka w tempurze  ×4               │
+│  Łosoś pieczony       ×12              │
+│                                        │
+│  [START]                               │
+└────────────────────────────────────────┘
+```
+
+**Przykład renderowania dla tabletu MAIN** (to samo zamówienie + Hosomaki Awokado):
+
+```
+┌─ Hosomaki Awokado ×1 ──────────────────┐
+│  QUEUED   •  MAIN                      │
+│  (brak sekcji)                         │
+│  [START]                               │
+└────────────────────────────────────────┘
+
+┌─ Hosomaki Tamago ×2 ───────────────────┐
+│  QUEUED   •  KITCHEN                   │
+│  ─────────────────────────────────     │
+│  Krewetka w tempurze  ×4               │
+│  Łosoś pieczony       ×12              │
+│  [START]                               │
+└────────────────────────────────────────┘
+```
+
+---
+
+### 13.6. Podsumowanie wymaganych zmian w Android
+
+| Co zmienić | Priorytet |
+|---|---|
+| Zaktualizować model `KdsTicketItem` — dodać `productName`, `station`, `printer`, `productions` | **Wymagane** |
+| Dodać model `KdsProductionTask` | **Wymagane** |
+| Zmienić renderowanie karty — jeden item = jeden produkt, sekcje z `productions[]` | **Wymagane** |
+| Dodać lokalne filtrowanie po `item.station` (ustawienie tabletu) | **Wymagane** |
+| Usunąć wysyłanie `?station=...` w query params (lub zostawić jako opcję) | Opcjonalne |
+| Zaktualizować `kotlin` data class `KdsTicket` — obsłużyć `stations: List<String>` | Zalecane |

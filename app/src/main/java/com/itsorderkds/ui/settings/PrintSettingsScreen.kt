@@ -426,6 +426,14 @@ private fun PrinterInfoRow(printer: Printer) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            // Rola KDS (filtrowanie pozycji)
+            if (printer.kdsRole != null) {
+                Text(
+                    "🎯 Filtr KDS: ${printer.kdsRole.displayName} (${printer.kdsRole.apiValue})",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         if (!printer.enabled) {
             Text("Wyłączona", style = MaterialTheme.typography.labelSmall,

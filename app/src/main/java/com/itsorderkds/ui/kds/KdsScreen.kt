@@ -228,7 +228,8 @@ fun KdsScreen(
                     .fillMaxHeight()
             ) {
                 when {
-                    uiState.isLoading -> LoadingContent()
+                    // Pierwsze ładowanie (mapa pusta) → loader zamiast bloczków
+                    uiState.isLoading && tickets.isEmpty() -> LoadingContent()
                     tickets.isEmpty() -> EmptyKdsPlaceholder(activeFilter = uiState.activeFilter)
                     else -> {
                         if (uiState.showProductionSummary && tickets.isNotEmpty()) {
@@ -255,6 +256,18 @@ fun KdsScreen(
                             )
                         }
                     }
+                }
+
+                // Cichy wskaźnik odświeżania — mała kula w rogu, nie ukrywa bloczków
+                if (uiState.isRefreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(16.dp),
+                        color = Color.White.copy(alpha = 0.4f),
+                        strokeWidth = 2.dp
+                    )
                 }
 
                 SnackbarHost(
@@ -511,53 +524,56 @@ private fun KdsContentArea(
 
     when (displayMode) {
         KdsDisplayMode.COMPACT_FLOW -> CompactFlowLayout(
-            tickets             = tickets,
-            callbacks           = callbacks,
-            queueMode           = uiState.queueMode,
-            gridColumns         = uiState.gridColumns,
-            focusedIndex        = uiState.focusedIndex,
-            prepTimePickupMin   = uiState.prepTimePickupMin,
-            prepTimeDeliveryMin = uiState.prepTimeDeliveryMin,
-            cancelEnabled       = uiState.cancelEnabled,
-            showNotes           = uiState.showNotes,
-            headerTapMode       = uiState.headerTapMode,
-            excludedKeywords    = uiState.excludedKeywords,
-            hasTopPanel         = hasTopPanel,
-            compactCardMode     = uiState.compactCardMode,
-            inFlightIds         = uiState.inFlightIds
+            tickets               = tickets,
+            callbacks             = callbacks,
+            queueMode             = uiState.queueMode,
+            gridColumns           = uiState.gridColumns,
+            focusedIndex          = uiState.focusedIndex,
+            prepTimePickupMin     = uiState.prepTimePickupMin,
+            prepTimeDeliveryMin   = uiState.prepTimeDeliveryMin,
+            cancelEnabled         = uiState.cancelEnabled,
+            showNotes             = uiState.showNotes,
+            headerTapMode         = uiState.headerTapMode,
+            excludedKeywords      = uiState.excludedKeywords,
+            hasTopPanel           = hasTopPanel,
+            compactCardMode       = uiState.compactCardMode,
+            showProductionsInCard = uiState.showProductionsInCard,
+            inFlightIds           = uiState.inFlightIds
         )
         KdsDisplayMode.STABLE_GRID -> StableGridLayout(
-            ticketsMap          = ticketsMap,
-            slotMap             = uiState.slotMap,
-            callbacks           = callbacks,
-            queueMode           = uiState.queueMode,
-            gridColumns         = uiState.gridColumns,
-            focusedIndex        = uiState.focusedIndex,
-            prepTimePickupMin   = uiState.prepTimePickupMin,
-            prepTimeDeliveryMin = uiState.prepTimeDeliveryMin,
-            cancelEnabled       = uiState.cancelEnabled,
-            showNotes           = uiState.showNotes,
-            headerTapMode       = uiState.headerTapMode,
-            excludedKeywords    = uiState.excludedKeywords,
-            hasTopPanel         = hasTopPanel,
-            compactCardMode     = uiState.compactCardMode,
-            inFlightIds         = uiState.inFlightIds
+            ticketsMap            = ticketsMap,
+            slotMap               = uiState.slotMap,
+            callbacks             = callbacks,
+            queueMode             = uiState.queueMode,
+            gridColumns           = uiState.gridColumns,
+            focusedIndex          = uiState.focusedIndex,
+            prepTimePickupMin     = uiState.prepTimePickupMin,
+            prepTimeDeliveryMin   = uiState.prepTimeDeliveryMin,
+            cancelEnabled         = uiState.cancelEnabled,
+            showNotes             = uiState.showNotes,
+            headerTapMode         = uiState.headerTapMode,
+            excludedKeywords      = uiState.excludedKeywords,
+            hasTopPanel           = hasTopPanel,
+            compactCardMode       = uiState.compactCardMode,
+            showProductionsInCard = uiState.showProductionsInCard,
+            inFlightIds           = uiState.inFlightIds
         )
         KdsDisplayMode.COLUMN_MODE -> ColumnModeLayout(
-            tickets             = tickets,
-            callbacks           = callbacks,
-            queueMode           = uiState.queueMode,
-            gridColumns         = uiState.gridColumns,
-            focusedIndex        = uiState.focusedIndex,
-            prepTimePickupMin   = uiState.prepTimePickupMin,
-            prepTimeDeliveryMin = uiState.prepTimeDeliveryMin,
-            cancelEnabled       = uiState.cancelEnabled,
-            showNotes           = uiState.showNotes,
-            headerTapMode       = uiState.headerTapMode,
-            excludedKeywords    = uiState.excludedKeywords,
-            hasTopPanel         = hasTopPanel,
-            compactCardMode     = uiState.compactCardMode,
-            inFlightIds         = uiState.inFlightIds
+            tickets               = tickets,
+            callbacks             = callbacks,
+            queueMode             = uiState.queueMode,
+            gridColumns           = uiState.gridColumns,
+            focusedIndex          = uiState.focusedIndex,
+            prepTimePickupMin     = uiState.prepTimePickupMin,
+            prepTimeDeliveryMin   = uiState.prepTimeDeliveryMin,
+            cancelEnabled         = uiState.cancelEnabled,
+            showNotes             = uiState.showNotes,
+            headerTapMode         = uiState.headerTapMode,
+            excludedKeywords      = uiState.excludedKeywords,
+            hasTopPanel           = hasTopPanel,
+            compactCardMode       = uiState.compactCardMode,
+            showProductionsInCard = uiState.showProductionsInCard,
+            inFlightIds           = uiState.inFlightIds
         )
     }
 }

@@ -203,6 +203,7 @@ fun KdsTicketCard(
     showNotes: Boolean = true,
     headerTapMode: Boolean = false,
     excludedKeywords: List<String> = emptyList(),
+    showProductionsInCard: Boolean = false,
     isInFlight: Boolean = false,
     onAck: () -> Unit,
     onStart: () -> Unit,
@@ -352,10 +353,11 @@ fun KdsTicketCard(
             Column {
                 items.forEach { item ->
                     KdsItemRow(
-                        item        = item,
-                        showNotes   = showNotes,
-                        onStartItem = { onStartItem(item.id) },
-                        onReadyItem = { onReadyItem(item.id) }
+                        item                  = item,
+                        showNotes             = showNotes,
+                        showProductionsInCard = showProductionsInCard,
+                        onStartItem           = { onStartItem(item.id) },
+                        onReadyItem           = { onReadyItem(item.id) }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
@@ -499,7 +501,7 @@ private fun RushChip() {
 private fun SlaTimer(ticket: KdsTicket) {
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
-        while (true) { delay(1_000); nowMs = System.currentTimeMillis() }
+        while (true) { delay(60_000); nowMs = System.currentTimeMillis() }
     }
 
     // Dla zaplanowanych — liczymy do scheduledFor, nie do slaTargetAt
@@ -516,9 +518,7 @@ private fun SlaTimer(ticket: KdsTicket) {
 
     val diffMs  = targetMs - nowMs
     val diffSec = diffMs / 1_000
-    val absSec  = kotlin.math.abs(diffSec)
-    val mm      = absSec / 60
-    val ss      = absSec % 60
+    val absMin  = kotlin.math.abs(diffSec / 60)
     val sign    = if (diffSec < 0) "-" else ""
 
     // Dla zaplanowanych — kolor bazuje na scheduledFor, nie na slaTargetAt
@@ -533,7 +533,7 @@ private fun SlaTimer(ticket: KdsTicket) {
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text  = "%s%02d:%02d".format(sign, mm, ss),
+            text  = "%s%d min".format(sign, absMin),
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
             color = color
         )
@@ -571,6 +571,7 @@ private fun NoteChip(note: String) {
 private fun KdsItemRow(
     item: KdsTicketItem,
     showNotes: Boolean = true,
+    showProductionsInCard: Boolean = false,
     onStartItem: () -> Unit,
     onReadyItem: () -> Unit
 ) {
@@ -590,7 +591,7 @@ private fun KdsItemRow(
         else      -> Color.Transparent
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
@@ -600,66 +601,106 @@ private fun KdsItemRow(
                     Modifier.clickable(onClick = rowAction)
                 else Modifier
             )
-            .padding(vertical = 4.dp, horizontal = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 4.dp, horizontal = 2.dp)
     ) {
-        // Ilość
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(KdsCardBorder),
-            contentAlignment = Alignment.Center
+        // Główny wiersz: ilość + nazwa + wskaźnik stanu
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text  = "×${item.qty}",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = KdsTextPrimary
-            )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Nazwa + notatki (opcjonalnie)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.displayName,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight     = if (isDone) FontWeight.Normal else FontWeight.Medium,
-                    textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
-                ),
-                color = if (isDone) KdsTextMuted else KdsTextPrimary
-            )
-            if (showNotes && item.notes.isNotEmpty()) {
+            // Ilość
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(KdsCardBorder),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text  = item.notes.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = KdsTextSecondary
+                    text  = "×${item.qty}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = KdsTextPrimary
                 )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Nazwa + notatki (opcjonalnie)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.displayName,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight     = if (isDone) FontWeight.Normal else FontWeight.Medium,
+                        textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
+                    ),
+                    color = if (isDone) KdsTextMuted else KdsTextPrimary
+                )
+                if (showNotes && item.notes.isNotEmpty()) {
+                    Text(
+                        text  = item.notes.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = KdsTextSecondary
+                    )
+                }
+            }
+
+            // Mały wskaźnik stanu (bez ikony przycisku — zastąpiony kliknięciem wiersza)
+            when (item.state) {
+                "COOKING" -> {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF1565C0))
+                    )
+                }
+                "READY" -> {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint     = Color(0xFF2E7D32),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                else -> { /* QUEUED / SERVED / VOID - brak wskaźnika */ }
             }
         }
 
-        // Mały wskaźnik stanu (bez ikony przycisku — zastąpiony kliknięciem wiersza)
-        when (item.state) {
-            "COOKING" -> {
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFF1565C0))
-                )
+        // ─── Sekcje produkcyjne (productions[]) — punkt 13.5 ─────────────
+        // Wyświetl jako wcięta lista pod nazwą produktu (tylko gdy włączone w ustawieniach)
+        val productions = item.productions
+        if (showProductionsInCard && !productions.isNullOrEmpty() && !isDone) {
+            Spacer(modifier = Modifier.height(3.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 40.dp) // wyrównaj z nazwą produktu (po ilości)
+            ) {
+                productions.forEach { task ->
+                    val label = task.label?.takeIf { it.isNotBlank() } ?: return@forEach
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text  = "  • $label",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Normal),
+                            color = KdsTextSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (task.qty > 0) {
+                            Text(
+                                text  = "×${task.qty}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                color = KdsTextMuted
+                            )
+                        }
+                    }
+                }
             }
-            "READY" -> {
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint     = Color(0xFF2E7D32),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            else -> { /* QUEUED / SERVED / VOID - brak wskaźnika */ }
         }
     }
 }

@@ -33,11 +33,14 @@ class KdsRepository @Inject constructor(
         from: String? = null,
         to: String? = null,
         priority: String? = null,
+        station: String? = null,
+        printer: String? = null,
+        scheduledOnly: Boolean? = null,
         limit: Int = 100,
         skip: Int = 0
     ): Resource<KdsTicketsResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = kdsApi.getTickets(state, from, to, priority, limit, skip)
+            val response = kdsApi.getTickets(state, from, to, priority, station, printer, scheduledOnly, limit, skip)
             if (response.isSuccessful && response.body() != null) {
                 Resource.Success(response.body()!!)
             } else {

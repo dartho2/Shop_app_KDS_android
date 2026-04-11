@@ -112,7 +112,8 @@ class PrinterService @Inject constructor(
         target: TargetConfig,
         order: Order,
         useDeliveryInterval: Boolean,
-        items: List<KdsTicketItem> = emptyList()
+        items: List<KdsTicketItem> = emptyList(),
+        kdsTicketNumber: String? = null
     ) {
         val cfg = target.printer
 
@@ -165,12 +166,60 @@ class PrinterService @Inject constructor(
 
         try {
             val template = PrintTemplate.fromId(cfg.templateId)
-            val ticket = if (template == PrintTemplate.KITCHEN_ONLY && items.isNotEmpty()) {
-                // Szablon kuchenny z filtrowaniem po printer=KITCHEN
-                Timber.d("🍳 KITCHEN_ONLY: filtrowanie items (total=${items.size})")
-                PrintTemplateFactory.buildKitchenOnlyTicket(context, order, items, useDeliveryInterval)
-            } else {
-                PrintTemplateFactory.buildTicket(context, order, template, useDeliveryInterval)
+
+            // ── Wybór szablonu + filtrowanie items ────────────────────────────
+            // Reguła:
+            //  1. Jeśli drukarka ma kdsRole (pole z API: KITCHEN, SUSHI, BAR itd.)
+            //     → filtruj items po tej roli i buduj bloczek kuchenny
+            //     → jeśli null (brak pozycji dla tej roli) → NIE drukuj
+            //  2. Jeśli nie ma kdsRole ale szablon = KITCHEN_ONLY i są items
+            //     → legacy: filtruj po KITCHEN (stare zachowanie)
+            //  3. Jeśli printerType == KITCHEN ale brak kdsRole i szablon to nie KITCHEN_ONLY
+            //     -> filtruj po domyślnym KITCHEN (zgodnie z życzeniem)
+            //  4. W pozostałych przypadkach -> standardowy builder z Order
+            val ticket: String? = when {
+                cfg.hasKdsRole() -> {
+                    val result = PrintTemplateFactory.buildFilteredTicket(
+                        ctx                 = context,
+                        order               = order,
+                        items               = items,
+                        printerRole         = cfg.kdsRole,
+                        useDeliveryInterval = useDeliveryInterval,
+                        kdsTicketNumber     = kdsTicketNumber
+                    )
+                    if (result == null) {
+                        Timber.tag("PRINT_FILTER").d(
+                            "🚫 Drukarka ${cfg.name} (kdsRole=${cfg.kdsRole?.apiValue}): " +
+                            "brak pozycji -> pomijam drukowanie"
+                        )
+                    }
+                    result
+                }
+                template == PrintTemplate.KITCHEN_ONLY && items.isNotEmpty() -> {
+                    Timber.tag("PRINT_FILTER").d(
+                        "🥢 Szablon Kuchenny, ale brak zdefiniowanej roli (drukuj wszystkie), items=${items.size}"
+                    )
+                    val result = PrintTemplateFactory.buildFilteredTicket(
+                        ctx                 = context,
+                        order               = order,
+                        items               = items,
+                        printerRole         = null, // brak odrzucania - drukujemy pełne menu
+                        useDeliveryInterval = useDeliveryInterval,
+                        kdsTicketNumber     = kdsTicketNumber
+                    )
+                    result
+                }
+                else -> {
+                    // Drukarka bez KDS Role, korzystająca z innego szablonu (np. Standardowy)
+                    PrintTemplateFactory.buildTicket(context, order, template, useDeliveryInterval)
+                }
+            }
+
+            // Brak pozycji dla tej drukarki -> nic nie drukujemy
+            if (ticket == null) {
+                val skipDuration = System.currentTimeMillis() - printStartTime
+                Timber.d("⏭️ PrinterSTEP: [SKIP] target=${cfg.printerType} — brak pozycji (${skipDuration}ms)")
+                return
             }
             val escCharset = toCharsetEncoding(cfg)
             Timber.d("✅ Dokument gotowy (template=${cfg.templateId}, autoCut=${cfg.autoCut})")
@@ -232,15 +281,23 @@ class PrinterService @Inject constructor(
     }
 
     /**
-     * Drukuje bloczek kuchenny z filtrowaniem pozycji po printer=KITCHEN.
-     * Gdy [items] puste — fallback na [printKitchenTicket] (drukuje wszystkie pozycje).
+     * Drukuje bloczek kuchenny z filtrowaniem pozycji per-drukarka.
+     *
+     * Każda drukarka kuchenna dostaje TYLKO swoje pozycje na podstawie [Printer.kdsRole]:
+     *  - drukarka z kdsRole=KITCHEN → items gdzie printer="KITCHEN"
+     *  - drukarka z kdsRole=SUSHI   → items gdzie printer="SUSHI"
+     *  - drukarka bez kdsRole       → wszystkie pozycje (brak filtrowania, legacy)
+     *
+     * Gdy [items] puste — fallback na [printKitchenTicket] (drukuje wszystkie z Order).
      */
     suspend fun printKitchenTicketWithItems(
         order: Order,
         items: List<KdsTicketItem>,
-        useDeliveryInterval: Boolean = false
+        useDeliveryInterval: Boolean = false,
+        kdsTicketNumber: String? = null
     ) {
         if (items.isEmpty()) {
+            Timber.tag("PRINT_FILTER").d("⏭️ printKitchenTicketWithItems: brak items → fallback")
             printKitchenTicket(order, useDeliveryInterval)
             return
         }
@@ -254,7 +311,11 @@ class PrinterService @Inject constructor(
                 return
             }
             for (t in targets) {
-                printOne(t, order, useDeliveryInterval, items)
+                val roleInfo = t.printer.kdsRole?.apiValue ?: "brak roli"
+                Timber.tag("PRINT_FILTER").d(
+                    "🖨️ printKitchenTicketWithItems → ${t.printer.name} (kdsRole=$roleInfo)"
+                )
+                printOne(t, order, useDeliveryInterval, items, kdsTicketNumber)
                 delay(500)
             }
         } finally {
@@ -603,11 +664,13 @@ class PrinterService @Inject constructor(
      *
      * @param items Lista pozycji ticketu KDS (z polem printer). Gdy puste — zachowanie
      *              identyczne z [printOnTicketStatusChange] (drukuje wszystkie pozycje z Order).
+     * @param kdsTicketNumber Numer KDS (np. "W-003") do wydruku w nagłówku bloczka.
      */
     suspend fun printOnTicketStatusChangeWithItems(
         order: Order,
         newState: String,
-        items: List<KdsTicketItem>
+        items: List<KdsTicketItem>,
+        kdsTicketNumber: String? = null
     ) {
         val stateEnum = KdsTicketState.fromApiValue(newState) ?: run {
             Timber.tag("PRINT_RULES").w("⏭️ Nieznany stan KDS: $newState – brak druku")
@@ -624,12 +687,14 @@ class PrinterService @Inject constructor(
         val allPrinters = PrinterPreferences.getPrinters(context)
             .filter { it.enabled && it.deviceId.isNotBlank() }
 
-        Timber.tag("PRINT_RULES").d("🖨️ printOnTicketStatusChange: stan=$newState, reguł=${rules.size}")
+        Timber.tag("PRINT_RULES").d(
+            "🖨️ printOnTicketStatusChangeWithItems: stan=$newState, reguł=${rules.size}, items=${items.size}"
+        )
 
         printMutex.lock()
         try {
             for (rule in rules) {
-                val targets: List<Printer> = if (rule.printerIds.isEmpty()) {
+                val targets: List<com.itsorderkds.data.model.Printer> = if (rule.printerIds.isEmpty()) {
                     allPrinters
                 } else {
                     allPrinters.filter { it.id in rule.printerIds }
@@ -641,22 +706,37 @@ class PrinterService @Inject constructor(
                 }
 
                 for (printer in targets) {
-                    // Nadpisz szablon jeśli reguła ma własny
+                    // Nadpisz szablon jeśli reguła ma własny override
                     val effectivePrinter = if (rule.templateOverrideId != null) {
                         printer.copy(templateId = rule.templateOverrideId)
                     } else {
                         printer
                     }
-                    val isKitchenOnly = effectivePrinter.templateId == PrintTemplate.KITCHEN_ONLY.id
+
+                    // ── Logowanie co trafi na tę drukarkę ─────────────────
+                    val roleInfo = effectivePrinter.kdsRole?.apiValue ?: "brak roli (drukuje wszystko)"
+                    val filteredCount = when {
+                        items.isEmpty() -> 0
+                        effectivePrinter.kdsRole == null -> items.size  // brak filtrowania
+                        effectivePrinter.kdsRole == com.itsorderkds.data.model.KdsPrinterEnum.MAIN ->
+                            items.count {
+                                it.printerEnum == com.itsorderkds.data.model.KdsPrinterEnum.MAIN
+                                || it.printerEnum == null
+                            }
+                        else -> items.count { it.shouldPrintOn(effectivePrinter.kdsRole) }
+                    }
+
                     Timber.tag("PRINT_RULES").d(
-                        "  → drukuję na ${effectivePrinter.name} " +
-                        "(tpl=${effectivePrinter.templateId}, kitchenOnly=$isKitchenOnly, items=${items.size})"
+                        "  → ${effectivePrinter.name} (tpl=${effectivePrinter.templateId}, " +
+                        "kdsRole=$roleInfo, pasujące=$filteredCount/${items.size})"
                     )
+
                     printOne(
-                        target            = TargetConfig(effectivePrinter),
-                        order             = order,
+                        target              = TargetConfig(effectivePrinter),
+                        order               = order,
                         useDeliveryInterval = false,
-                        items             = items
+                        items               = items,   // printOne decyduje o filtrowaniu wg kdsRole
+                        kdsTicketNumber     = kdsTicketNumber
                     )
                     delay(300)
                 }

@@ -47,10 +47,10 @@ class KdsSocketEventsHandler @Inject constructor(
     fun register() {
         eventHandlers.forEach { (event, handler) ->
             try {
-                SocketManager.on(event.name, handler)
-                Timber.tag(TAG).d("Registered KDS handler for ${event.name}")
+                SocketManager.on(event.raw, handler)
+                Timber.tag(TAG).d("Registered KDS handler for ${event.raw}")
             } catch (t: Throwable) {
-                Timber.tag(TAG).e(t, "Failed to register KDS handler for ${event.name}")
+                Timber.tag(TAG).e(t, "Failed to register KDS handler for ${event.raw}")
             }
         }
     }

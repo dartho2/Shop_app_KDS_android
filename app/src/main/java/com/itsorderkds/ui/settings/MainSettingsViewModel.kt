@@ -76,6 +76,14 @@ class MainSettingsViewModel @Inject constructor(
         viewModelScope.launch { appPreferencesManager.setKdsShowScheduled(enabled) }
     }
 
+    /** Stacja KDS przypisana do tego tabletu (np. MAIN, KITCHEN) */
+    val kdsStation: StateFlow<String> = appPreferencesManager.kdsStationFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, "MAIN")
+
+    fun setKdsStation(station: String) {
+        viewModelScope.launch { appPreferencesManager.setKdsStation(station) }
+    }
+
     fun setKdsRequireReadyConfirm(enabled: Boolean) {
         viewModelScope.launch { appPreferencesManager.setKdsRequireReadyConfirm(enabled) }
     }
@@ -193,5 +201,20 @@ class MainSettingsViewModel @Inject constructor(
     fun setKdsCompactCardMode(enabled: Boolean) {
         viewModelScope.launch { appPreferencesManager.setKdsCompactCardMode(enabled) }
     }
-}
 
+    /** Czy pokazywać sekcje productions[] w bloczkach KDS (domyślnie false) */
+    val kdsShowProductionsInCard: StateFlow<Boolean> = appPreferencesManager.kdsShowProductionsInCardFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    fun setKdsShowProductionsInCard(enabled: Boolean) {
+        viewModelScope.launch { appPreferencesManager.setKdsShowProductionsInCard(enabled) }
+    }
+
+    /** Czy drukować sekcje nagłówkowe na paragonach kuchennych */
+    val kdsPrintKitchenMainProduct: StateFlow<Boolean> = appPreferencesManager.kdsPrintKitchenMainProductFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    fun setKdsPrintKitchenMainProduct(enabled: Boolean) {
+        viewModelScope.launch { appPreferencesManager.setKdsPrintKitchenMainProduct(enabled) }
+    }
+}

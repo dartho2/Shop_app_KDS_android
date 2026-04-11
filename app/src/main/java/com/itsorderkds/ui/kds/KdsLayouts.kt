@@ -61,6 +61,7 @@ private fun TicketSlot(
     headerTapMode: Boolean,
     excludedKeywords: List<String> = emptyList(),
     compactCardMode: Boolean = false,
+    showProductionsInCard: Boolean = false,
     isInFlight: Boolean = false,
     callbacks: TicketCallbacks
 ) {
@@ -77,16 +78,17 @@ private fun TicketSlot(
         )
     } else {
         KdsTicketCard(
-            entry               = entry,
-            queueMode           = queueMode,
-            isFocused           = isFocused,
-            prepTimePickupMin   = prepTimePickupMin,
-            prepTimeDeliveryMin = prepTimeDeliveryMin,
-            cancelEnabled       = cancelEnabled,
-            showNotes           = showNotes,
-            headerTapMode       = headerTapMode,
-            excludedKeywords    = excludedKeywords,
-            isInFlight          = isInFlight,
+            entry                  = entry,
+            queueMode              = queueMode,
+            isFocused              = isFocused,
+            prepTimePickupMin      = prepTimePickupMin,
+            prepTimeDeliveryMin    = prepTimeDeliveryMin,
+            cancelEnabled          = cancelEnabled,
+            showNotes              = showNotes,
+            headerTapMode          = headerTapMode,
+            excludedKeywords       = excludedKeywords,
+            showProductionsInCard  = showProductionsInCard,
+            isInFlight             = isInFlight,
             onAck       = { callbacks.onAck(id) },
             onStart     = { callbacks.onStart(id) },
             onReady     = { callbacks.onReady(id) },
@@ -106,20 +108,21 @@ private fun TicketSlot(
 
 @Composable
 fun CompactFlowLayout(
-    tickets:             List<KdsTicketEntry>,
-    callbacks:           TicketCallbacks,
-    queueMode:           Boolean,
-    gridColumns:         Int,
-    focusedIndex:        Int,
-    prepTimePickupMin:   Int = 30,
-    prepTimeDeliveryMin: Int = 60,
-    cancelEnabled:       Boolean = false,
-    showNotes:           Boolean = true,
-    headerTapMode:       Boolean = false,
-    excludedKeywords:    List<String> = emptyList(),
-    hasTopPanel:         Boolean = false,
-    compactCardMode:     Boolean = false,
-    inFlightIds:         Set<String> = emptySet()
+    tickets:              List<KdsTicketEntry>,
+    callbacks:            TicketCallbacks,
+    queueMode:            Boolean,
+    gridColumns:          Int,
+    focusedIndex:         Int,
+    prepTimePickupMin:    Int = 30,
+    prepTimeDeliveryMin:  Int = 60,
+    cancelEnabled:        Boolean = false,
+    showNotes:            Boolean = true,
+    headerTapMode:        Boolean = false,
+    excludedKeywords:     List<String> = emptyList(),
+    hasTopPanel:          Boolean = false,
+    compactCardMode:      Boolean = false,
+    showProductionsInCard: Boolean = false,
+    inFlightIds:          Set<String> = emptySet()
 ) {
     val cols = resolveColumns(gridColumns, LocalConfiguration.current.screenWidthDp)
     val statusInsets = WindowInsets.statusBars.asPaddingValues()
@@ -140,18 +143,19 @@ fun CompactFlowLayout(
         items(items = tickets, key = { it.ticket.id }) { entry ->
             val idx = tickets.indexOf(entry)
             TicketSlot(
-                entry               = entry,
-                isFocused           = (idx == focusedIndex),
-                queueMode           = queueMode,
-                prepTimePickupMin   = prepTimePickupMin,
-                prepTimeDeliveryMin = prepTimeDeliveryMin,
-                cancelEnabled       = cancelEnabled,
-                showNotes           = showNotes,
-                headerTapMode       = headerTapMode,
-                excludedKeywords    = excludedKeywords,
-                compactCardMode     = compactCardMode,
-                isInFlight          = entry.ticket.id in inFlightIds,
-                callbacks           = callbacks
+                entry                 = entry,
+                isFocused             = (idx == focusedIndex),
+                queueMode             = queueMode,
+                prepTimePickupMin     = prepTimePickupMin,
+                prepTimeDeliveryMin   = prepTimeDeliveryMin,
+                cancelEnabled         = cancelEnabled,
+                showNotes             = showNotes,
+                headerTapMode         = headerTapMode,
+                excludedKeywords      = excludedKeywords,
+                compactCardMode       = compactCardMode,
+                showProductionsInCard = showProductionsInCard,
+                isInFlight            = entry.ticket.id in inFlightIds,
+                callbacks             = callbacks
             )
         }
     }
@@ -167,21 +171,22 @@ fun CompactFlowLayout(
 
 @Composable
 fun StableGridLayout(
-    ticketsMap:          Map<String, KdsTicketEntry>,
-    slotMap:             SlotMap,
-    callbacks:           TicketCallbacks,
-    queueMode:           Boolean,
-    gridColumns:         Int,
-    focusedIndex:        Int,
-    prepTimePickupMin:   Int = 30,
-    prepTimeDeliveryMin: Int = 60,
-    cancelEnabled:       Boolean = false,
-    showNotes:           Boolean = true,
-    headerTapMode:       Boolean = false,
-    excludedKeywords:    List<String> = emptyList(),
-    hasTopPanel:         Boolean = false,
-    compactCardMode:     Boolean = false,
-    inFlightIds:         Set<String> = emptySet()
+    ticketsMap:           Map<String, KdsTicketEntry>,
+    slotMap:              SlotMap,
+    callbacks:            TicketCallbacks,
+    queueMode:            Boolean,
+    gridColumns:          Int,
+    focusedIndex:         Int,
+    prepTimePickupMin:    Int = 30,
+    prepTimeDeliveryMin:  Int = 60,
+    cancelEnabled:        Boolean = false,
+    showNotes:            Boolean = true,
+    headerTapMode:        Boolean = false,
+    excludedKeywords:     List<String> = emptyList(),
+    hasTopPanel:          Boolean = false,
+    compactCardMode:      Boolean = false,
+    showProductionsInCard: Boolean = false,
+    inFlightIds:          Set<String> = emptySet()
 ) {
     val cols        = resolveColumns(gridColumns, LocalConfiguration.current.screenWidthDp)
     val sortedSlots = remember(slotMap) { slotMap.toSortedList() }
@@ -209,18 +214,19 @@ fun StableGridLayout(
             val entry = if (ticketId != null) ticketsMap[ticketId] else null
             if (entry != null) {
                 TicketSlot(
-                    entry               = entry,
-                    isFocused           = (slotIdx == focusedIndex),
-                    queueMode           = queueMode,
-                    prepTimePickupMin   = prepTimePickupMin,
-                    prepTimeDeliveryMin = prepTimeDeliveryMin,
-                    cancelEnabled       = cancelEnabled,
-                    showNotes           = showNotes,
-                    headerTapMode       = headerTapMode,
-                    excludedKeywords    = excludedKeywords,
-                    compactCardMode     = compactCardMode,
-                    isInFlight          = ticketId in inFlightIds,
-                    callbacks           = callbacks
+                    entry                 = entry,
+                    isFocused             = (slotIdx == focusedIndex),
+                    queueMode             = queueMode,
+                    prepTimePickupMin     = prepTimePickupMin,
+                    prepTimeDeliveryMin   = prepTimeDeliveryMin,
+                    cancelEnabled         = cancelEnabled,
+                    showNotes             = showNotes,
+                    headerTapMode         = headerTapMode,
+                    excludedKeywords      = excludedKeywords,
+                    compactCardMode       = compactCardMode,
+                    showProductionsInCard = showProductionsInCard,
+                    isInFlight            = ticketId in inFlightIds,
+                    callbacks             = callbacks
                 )
             } else {
                 Box(modifier = Modifier.fillMaxWidth())
@@ -237,20 +243,21 @@ fun StableGridLayout(
 
 @Composable
 fun ColumnModeLayout(
-    tickets:             List<KdsTicketEntry>,
-    callbacks:           TicketCallbacks,
-    queueMode:           Boolean,
-    gridColumns:         Int,
-    focusedIndex:        Int,
-    prepTimePickupMin:   Int = 30,
-    prepTimeDeliveryMin: Int = 60,
-    cancelEnabled:       Boolean = false,
-    showNotes:           Boolean = true,
-    headerTapMode:       Boolean = false,
-    excludedKeywords:    List<String> = emptyList(),
-    hasTopPanel:         Boolean = false,
-    compactCardMode:     Boolean = false,
-    inFlightIds:         Set<String> = emptySet()
+    tickets:              List<KdsTicketEntry>,
+    callbacks:            TicketCallbacks,
+    queueMode:            Boolean,
+    gridColumns:          Int,
+    focusedIndex:         Int,
+    prepTimePickupMin:    Int = 30,
+    prepTimeDeliveryMin:  Int = 60,
+    cancelEnabled:        Boolean = false,
+    showNotes:            Boolean = true,
+    headerTapMode:        Boolean = false,
+    excludedKeywords:     List<String> = emptyList(),
+    hasTopPanel:          Boolean = false,
+    compactCardMode:      Boolean = false,
+    showProductionsInCard: Boolean = false,
+    inFlightIds:          Set<String> = emptySet()
 ) {
     val cols = resolveColumns(gridColumns, LocalConfiguration.current.screenWidthDp)
     val columns: List<List<Pair<Int, KdsTicketEntry>>> = remember(tickets, cols) {
@@ -282,18 +289,19 @@ fun ColumnModeLayout(
                     key   = { pair: Pair<Int, KdsTicketEntry> -> pair.second.ticket.id }
                 ) { pair: Pair<Int, KdsTicketEntry> ->
                     TicketSlot(
-                        entry               = pair.second,
-                        isFocused           = (pair.first == focusedIndex),
-                        queueMode           = queueMode,
-                        prepTimePickupMin   = prepTimePickupMin,
-                        prepTimeDeliveryMin = prepTimeDeliveryMin,
-                        cancelEnabled       = cancelEnabled,
-                        showNotes           = showNotes,
-                        headerTapMode       = headerTapMode,
-                        excludedKeywords    = excludedKeywords,
-                        compactCardMode     = compactCardMode,
-                        isInFlight          = pair.second.ticket.id in inFlightIds,
-                        callbacks           = callbacks
+                        entry                 = pair.second,
+                        isFocused             = (pair.first == focusedIndex),
+                        queueMode             = queueMode,
+                        prepTimePickupMin     = prepTimePickupMin,
+                        prepTimeDeliveryMin   = prepTimeDeliveryMin,
+                        cancelEnabled         = cancelEnabled,
+                        showNotes             = showNotes,
+                        headerTapMode         = headerTapMode,
+                        excludedKeywords      = excludedKeywords,
+                        compactCardMode       = compactCardMode,
+                        showProductionsInCard = showProductionsInCard,
+                        isInFlight            = pair.second.ticket.id in inFlightIds,
+                        callbacks             = callbacks
                     )
                 }
             }

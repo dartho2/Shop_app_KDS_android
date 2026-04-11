@@ -122,22 +122,33 @@ data class TemplateConfig(
  */
 @Serializable
 data class Printer(
-    val id: String,                      // Unique ID (UUID)
-    val name: String,                    // np. "Drukarka Główna", "Kuchnia Gorące"
-    val deviceId: String,                // MAC address BT (np. "AB:0D:6F:E2:85:D7") lub IP dla sieci
-    val connectionType: PrinterConnectionType = PrinterConnectionType.BLUETOOTH, // Bluetooth, Network, Builtin
-    val networkIp: String? = null,       // IP dla drukarki sieciowej (np. "192.168.1.100")
-    val networkPort: Int = 9100,         // Port dla drukarki sieciowej (domyślnie 9100 dla RAW TCP)
-    val printerType: PrinterType = PrinterType.STANDARD,  // KITCHEN, STANDARD, BAR itp.
-    val profileId: String,               // "profile_pos_8390_dual", "profile_mobile_ssp", "profile_custom"
-    val templateId: String,              // "template_standard", "template_compact", "template_kitchen_only"
-    val templateConfig: TemplateConfig = TemplateConfig.standard(), // Konfiguracja szablonu wydruku
-    val encoding: String = "UTF-8",      // "Cp852", "UTF-8", "Cp437"
-    val codepage: Int? = null,           // 13 (PC852), null dla UTF-8
-    val autoCut: Boolean = false,        // automatyczne cięcie papieru
-    val enabled: Boolean = true,         // czy drukarka jest aktywna
-    val order: Int = 0,                  // kolejność drukowania (1, 2, 3...)
-    val plainTextMode: Boolean = false   // tryb zwykłego tekstu — dla drukarek nieobsługujących ESC/POS (biurowe, laserowe)
+    val id: String,
+    val name: String,
+    val deviceId: String,
+    val connectionType: PrinterConnectionType = PrinterConnectionType.BLUETOOTH,
+    val networkIp: String? = null,
+    val networkPort: Int = 9100,
+    val printerType: PrinterType = PrinterType.STANDARD,
+    /**
+     * Rola tej drukarki fizycznej w kontekście KDS API.
+     * Określa które pozycje (KdsTicketItem.printer) mają być na niej drukowane.
+     *
+     * Przykłady:
+     *  - KdsPrinterEnum.KITCHEN → drukuj items gdzie printer="KITCHEN"
+     *  - KdsPrinterEnum.SUSHI   → drukuj items gdzie printer="SUSHI"
+     *  - KdsPrinterEnum.MAIN    → drukuj items gdzie printer="MAIN" lub printer=null (fallback)
+     *  - null                   → stare zachowanie: drukuj wszystkie pozycje (brak filtrowania)
+     */
+    val kdsRole: KdsPrinterEnum? = null,
+    val profileId: String,
+    val templateId: String,
+    val templateConfig: TemplateConfig = TemplateConfig.standard(),
+    val encoding: String = "UTF-8",
+    val codepage: Int? = null,
+    val autoCut: Boolean = false,
+    val enabled: Boolean = true,
+    val order: Int = 0,
+    val plainTextMode: Boolean = false
 ) {
     /**
      * Konwersja do legacy PrinterSettings (backward compatibility).
@@ -179,12 +190,24 @@ data class Printer(
      */
     fun getTemplateDisplayName(): String {
         return when (templateId) {
-            "template_standard" -> "Standardowy"
-            "template_compact" -> "Kompaktowy"
-            "template_kitchen_only" -> "Tylko Kuchnia"
+            "template_standard"     -> "Standardowy"
+            "template_compact"      -> "Kompaktowy"
+            "template_detailed"     -> "Szczegółowy"
+            "template_minimal"      -> "Minimalny"
+            "template_kitchen_only" -> "Kuchenny (filtered)"
             else -> templateId
         }
     }
+
+    /**
+     * Zwraca czytelną nazwę roli KDS lub informację o braku filtrowania.
+     */
+    fun kdsRoleDisplayName(): String = kdsRole?.displayName ?: "Wszystkie pozycje (brak filtrowania)"
+
+    /**
+     * Czy drukarka ma zdefiniowaną rolę KDS — używane do decyzji o filtrowaniu items.
+     */
+    fun hasKdsRole(): Boolean = kdsRole != null
 }
 
 /**

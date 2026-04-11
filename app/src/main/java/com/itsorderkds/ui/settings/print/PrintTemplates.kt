@@ -2,6 +2,7 @@ package com.itsorderkds.ui.settings.print
 
 import android.content.Context
 import com.itsorderkds.R
+import com.itsorderkds.data.model.KdsPrinterEnum
 import com.itsorderkds.data.model.KdsTicketItem
 import com.itsorderkds.data.model.Order
 import com.itsorderkds.data.model.OrderProduct
@@ -9,6 +10,7 @@ import com.itsorderkds.ui.order.OrderDelivery
 import com.itsorderkds.ui.order.PaymentMethod
 import com.itsorderkds.ui.order.SourceEnum
 import com.itsorderkds.util.AppPrefs
+import timber.log.Timber
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
@@ -64,70 +66,205 @@ object PrintTemplateFactory {
     }
 
     /**
-     * Builder kuchenny z filtrowaniem po printer=KITCHEN.
+     * Builder z filtrowaniem pozycji po roli drukarki z API ([printerRole]).
      *
-     * Przyjmuje [items] (z API ticketu KDS) i drukuje wyłącznie pozycje
-     * które mają [KdsTicketItem.printer] == "KITCHEN".
+     * Logika filtrowania:
+     *  - [printerRole] == KITCHEN  → items gdzie printer="KITCHEN"
+     *  - [printerRole] == SUSHI    → items gdzie printer="SUSHI"
+     *  - [printerRole] == BAR      → items gdzie printer="BAR"
+     *  - [printerRole] == DESSERT  → items gdzie printer="DESSERT"
+     *  - [printerRole] == MAIN     → items gdzie printer="MAIN" ORAZ items gdzie printer=null
      *
-     * Gdy [items] jest puste lub żadna pozycja nie ma printer=KITCHEN,
-     * drukowane są wszystkie pozycje (fallback — kompatybilność wsteczna,
-     * np. gdy API jeszcze nie zwraca pola printer).
+     * Zwraca **null** gdy po filtrowaniu nie ma żadnej pozycji → nie drukuj nic.
+     * Zwraca **null** gdy [items] puste i [printerRole] != null → nie drukuj nic.
+     * Wyjątek: gdy [printerRole] == null → drukuje wszystko (brak filtrowania).
      *
-     * @param ctx Context aplikacji
-     * @param order Zamówienie (nagłówek, adres, czas)
-     * @param items Lista pozycji ticketu KDS (z polem printer)
-     * @param useDeliveryInterval jeśli true używa deliveryInterval zamiast deliveryTime
+     * @return ESC/POS string lub null gdy brak pozycji do druku
      */
+    fun buildFilteredTicket(
+        ctx: Context,
+        order: Order,
+        items: List<KdsTicketItem>,
+        printerRole: KdsPrinterEnum?,
+        useDeliveryInterval: Boolean = false,
+        kdsTicketNumber: String? = null,
+        printKitchenMainProduct: Boolean = false
+    ): String? {
+        // Brak roli → drukuj wszystkie (brak filtrowania)
+        if (printerRole == null) {
+            Timber.tag("PRINT_FILTER").d("⏭️ buildFilteredTicket: brak roli → drukuję wszystkie przez buildKitchenTicketFromItems")
+            return if (items.isNotEmpty()) {
+                buildKitchenTicketFromItems(order, items, useDeliveryInterval, kdsTicketNumber, printKitchenMainProduct)
+            } else {
+                buildKitchenTicketBody(order, useDeliveryInterval)
+            }
+        }
+
+        // Brak items + jest rola → sprawdź czy wszyscy mają printer=null (stare API)
+        if (items.isEmpty()) {
+            return if (printerRole == KdsPrinterEnum.MAIN) {
+                Timber.tag("PRINT_FILTER").d("⏭️ brak items, rola=MAIN → standardowy bloczek")
+                buildKitchenTicketBody(order, useDeliveryInterval)
+            } else {
+                Timber.tag("PRINT_FILTER").d("⏭️ brak items, rola=${printerRole.apiValue} → nic nie drukuję")
+                null
+            }
+        }
+
+        // Filtruj pozycje według roli drukarki
+        val filtered = when (printerRole) {
+            KdsPrinterEnum.MAIN ->
+                // MAIN dostaje: printer="MAIN" + printer=null (pozycje bez przypisania)
+                items.filter { it.printerEnum == KdsPrinterEnum.MAIN || it.printerEnum == null }
+            else ->
+                items.filter { it.shouldPrintOn(printerRole) }
+        }
+
+        return if (filtered.isEmpty()) {
+            // Żadna pozycja nie pasuje do tej drukarki → NIE drukuj
+            Timber.tag("PRINT_FILTER").d(
+                "⏭️ Brak pozycji dla roli ${printerRole.apiValue} " +
+                "(sprawdzono ${items.size} items, wszystkie na inne stacje) → pomijam drukowanie"
+            )
+            null
+        } else {
+            Timber.tag("PRINT_FILTER").d(
+                "✅ buildFilteredTicket: ${filtered.size}/${items.size} pozycji " +
+                "dla roli ${printerRole.apiValue} (order=${order.orderNumber})"
+            )
+            buildKitchenTicketFromItems(order, filtered, useDeliveryInterval, kdsTicketNumber, printKitchenMainProduct)
+        }
+    }
+
+    /**
+     * Legacy: Builder kuchenny z filtrowaniem po printer=KITCHEN.
+     * Zachowany dla kompatybilności — używaj [buildFilteredTicket].
+     */
+    @Deprecated(
+        "Use buildFilteredTicket(ctx, order, items, KdsPrinterEnum.KITCHEN, useDeliveryInterval)",
+        ReplaceWith("buildFilteredTicket(ctx, order, items, KdsPrinterEnum.KITCHEN, useDeliveryInterval)")
+    )
     fun buildKitchenOnlyTicket(
         ctx: Context,
         order: Order,
         items: List<KdsTicketItem>,
         useDeliveryInterval: Boolean = false
+    ): String? = buildFilteredTicket(ctx, order, items, KdsPrinterEnum.KITCHEN, useDeliveryInterval)
+
+    /**
+     * Buduje bloczek kuchenny z listy [items] z obsługą productions[].
+     *
+     * Logika drukowania:
+     *  - Gdy item ma productions[] z printer=KITCHEN → drukuje KAŻDY task z productions
+     *    jako osobną linię (label + qty). Pozycja główna (displayName) jest tytułem/grupą.
+     *  - Gdy item nie ma productions (stare API lub brak sekcji) → drukuje jak dotąd
+     *    (displayName + qty).
+     *
+     * Dzięki temu kucharz widzi dokładnie co przygotować dla każdego produktu
+     * (np. składniki, podprodukty) a nie tylko ogólną nazwę.
+     */
+    private fun buildKitchenTicketFromItems(
+        order: Order,
+        items: List<KdsTicketItem>,
+        useDeliveryInterval: Boolean,
+        kdsTicketNumber: String? = null,
+        printKitchenMainProduct: Boolean = false
     ): String {
-        // Filtruj: tylko KITCHEN. Jeśli żadna nie ma printer=KITCHEN → drukuj wszystkie (fallback)
-        val kitchenItems = items.filter { it.isKitchenItem() }
-        val effectiveItems = kitchenItems.ifEmpty {
-            // Fallback: brak pola printer w API lub wszystkie bez oznaczenia → drukuj wszystko
-            android.util.Log.w(
-                "KITCHEN_ONLY",
-                "⚠️ Żadna pozycja nie ma printer=KITCHEN " +
-                "(total=${items.size}) — fallback: drukuję wszystkie"
-            )
-            items
+        // Budujemy własny body z obsługą productions — nie przez buildKitchenTicketBody
+        val now = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+        val deliveryLabel = when (order.deliveryType) {
+            OrderDelivery.DELIVERY,
+            OrderDelivery.DELIVERY_EXTERNAL,
+            OrderDelivery.FLAT_RATE -> "DOSTAWA"
+            OrderDelivery.PICKUP,
+            OrderDelivery.PICK_UP,
+            OrderDelivery.LOCAL_PICKUP -> "WYNOS"
+            OrderDelivery.DINE_IN,
+            OrderDelivery.ROOM_SERVICE -> "NA MIEJSCU"
+            else -> ""
         }
 
-        android.util.Log.d(
-            "KITCHEN_ONLY",
-            "🖨️ KITCHEN_ONLY: ${effectiveItems.size}/${items.size} pozycji " +
-            "(orderId=${order.orderId})"
-        )
-
-        // Konwertuj KdsTicketItem → OrderProduct (tylko pola potrzebne do wydruku)
-        val kitchenProducts: List<OrderProduct> = effectiveItems
-            .sortedBy { it.sequence }
-            .map { item ->
-                OrderProduct(
-                    name        = item.displayName,
-                    quantity    = item.qty,
-                    price       = 0.0,   // brak cen na bloczku kuchennym
-                    salePrice   = 0.0,
-                    discount    = 0.0,
-                    comment     = null,
-                    addonsGroup = emptyList(),
-                    note        = item.notes.filter { it.isNotBlank() }
-                )
+        val timeDisplayRaw = when {
+            useDeliveryInterval && !order.deliveryInterval.isNullOrBlank() -> order.deliveryInterval!!
+            !order.deliveryTime.isNullOrBlank() -> order.deliveryTime!!
+            !order.deliveryInterval.isNullOrBlank() -> order.deliveryInterval!!
+            order.isAsap == true -> "NA JUZ"
+            else -> ""
+        }
+        val timeDisplay = if (timeDisplayRaw.equals("NA JUZ", ignoreCase = true)) {
+            timeDisplayRaw
+        } else {
+            try {
+                val zdt = java.time.ZonedDateTime.parse(timeDisplayRaw)
+                java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(zdt)
+            } catch (e: Exception) {
+                timeDisplayRaw
             }
+        }
 
-        // Zbuduj uproszczone zamówienie tylko z kuchennymi pozycjami
-        val kitchenOrder = order.copy(
-            products = kitchenProducts,
-            // Brak sum na bloczku kuchennym
-            total         = 0.0,
-            shippingTotal = 0.0,
-            additionalFeeTotal = null
-        )
+        val sourceLabel = getKitchenSourceLabel(order.source?.name)
 
-        return buildKitchenTicketBody(kitchenOrder, useDeliveryInterval)
+        val header = buildString {
+            val kdsNum = kdsTicketNumber ?: ""
+            val extNum = order.orderNumber ?: "B/N"
+
+            if (kdsNum.isNotBlank()) {
+                appendLine("[C]$kdsNum")
+            }
+            appendLine("[C]<font size='wide'><b>#$extNum</b></font>")
+
+            if (sourceLabel.isNotBlank()) {
+                appendLine("[C]$sourceLabel")
+            }
+            if (deliveryLabel.isNotBlank()) {
+                appendLine("[C]<font size='wide'><b>$deliveryLabel</b></font>")
+            }
+            appendLine("[L]--------------------------------")
+            appendLine("[C]$now")
+            if (timeDisplay.isNotBlank()) {
+                appendLine("[C]<font size='wide'><b>$timeDisplay</b></font>")
+            }
+            appendLine("[L]--------------------------------")
+        }
+
+        // Buduj body z obsługą productions
+        val body = buildString {
+            for (item in items.sortedBy { it.sequence }) {
+                appendLine("[L]") // Odstęp 1 linijki przed każdym itemem
+
+                val kitchenProductions = item.productions
+                    ?.filter { task ->
+                        task.printerEnum == KdsPrinterEnum.KITCHEN || task.printerEnum == null
+                    }
+                    ?.filter { task -> task.label?.isNotBlank() == true }
+
+                if (!kitchenProductions.isNullOrEmpty()) {
+                    if (printKitchenMainProduct) {
+                        appendLine("[C]--- ${item.displayName} ---")
+                    }
+                    for (task in kitchenProductions) {
+                        val taskQty = if (task.qty > 0) "${task.qty}x " else ""
+                        appendLine("[L]** $taskQty${task.label}")
+                    }
+                    item.notes.forEach { note ->
+                        if (note.isNotBlank()) appendLine("[L]    ! $note")
+                    }
+                } else {
+                    val qtyStr = "${item.qty}x "
+                    appendLine("[L]$qtyStr${item.displayName}")
+                    item.notes.forEach { note ->
+                        if (note.isNotBlank()) appendLine("[L]    ! $note")
+                    }
+                }
+            }
+        }.trimEnd()
+
+        val notesLine = order.note?.takeIf { it.isNotBlank() }?.let {
+            "\n[L]--------------------------------\n[L]<b>UWAGA: $it</b>"
+        } ?: ""
+
+        return "$header\n$body$notesLine\n[L]================================\n\n\n"
     }
 
     /**
@@ -203,7 +340,7 @@ object PrintTemplateFactory {
             "\n[L]--------------------------------\n[L]<b>UWAGA: $it</b>"
         } ?: ""
 
-        return "$header\n\n$body$notesLine\n[L]================================\n\n\n"
+        return "$header\n$body$notesLine\n[L]================================\n\n\n"
     }
 
     private fun getKitchenSourceLabel(source: com.itsorderkds.ui.order.SourceEnum?): String =

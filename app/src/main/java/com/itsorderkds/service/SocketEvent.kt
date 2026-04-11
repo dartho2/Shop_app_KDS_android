@@ -22,20 +22,20 @@ enum class SocketEvent(val raw: String) {
     OPEN_HOURS_UPDATED("OPEN_HOURS_UPDATED"),
     OPEN_HOURS_PAUSE_CLEARED("OPEN_HOURS_PAUSE_CLEARED"),
     OPEN_HOURS_PAUSE_SET("OPEN_HOURS_PAUSE_SET"),
-    OPEN_HOURS_CREATED( "OPEN_HOURS_CREATED"),
+    OPEN_HOURS_CREATED("OPEN_HOURS_CREATED"),
     ORDER_SEND_TO_EXTERNAL_SUCCESS("ORDER_SEND_TO_EXTERNAL_SUCCESS"),
     ORDER_SEND_TO_EXTERNAL_FAILED("ORDER_SEND_TO_EXTERNAL_FAILED"),
     ORDER_SEND_TO_EXTERNAL_COURIER("ORDER_SEND_TO_EXTERNAL_COURIER"),
 
-    // ───── KDS EVENTY ─────
-    KDS_TICKET_CREATED("KDS_TICKET_CREATED"),
-    KDS_TICKET_ACKED("KDS_TICKET_ACKED"),
-    KDS_TICKET_STARTED("KDS_TICKET_STARTED"),
-    KDS_TICKET_READY("KDS_TICKET_READY"),
-    KDS_TICKET_HANDOFF("KDS_TICKET_HANDOFF"),
-    KDS_TICKET_CANCEL("KDS_TICKET_CANCEL"),
-    KDS_ITEM_STARTED("KDS_ITEM_STARTED"),
-    KDS_ITEM_READY("KDS_ITEM_READY");
+    // ───── KDS EVENTY — nazwy zgodne z API (kds:ticket:*) ─────
+    KDS_TICKET_CREATED("kds:ticket:created"),
+    KDS_TICKET_ACKED("kds:ticket:acked"),
+    KDS_TICKET_STARTED("kds:ticket:started"),
+    KDS_TICKET_READY("kds:ticket:ready"),
+    KDS_TICKET_HANDOFF("kds:ticket:handoff"),
+    KDS_TICKET_CANCEL("kds:ticket:cancel"),
+    KDS_ITEM_STARTED("kds:item:started"),
+    KDS_ITEM_READY("kds:item:ready");
 
     companion object {
         /** Zamienia tekst z socketa na odpowiadający mu enum. Zwraca null, gdy tekst nie pasuje. */

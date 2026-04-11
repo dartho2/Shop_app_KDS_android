@@ -40,3 +40,5 @@ enum class KdsPriority {
     RUSH
 }
 
+// KdsStationEnum i KdsPrinterEnum są zdefiniowane w KdsStationEnum.kt
+
